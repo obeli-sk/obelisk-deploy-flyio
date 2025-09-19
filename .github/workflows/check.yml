@@ -1,0 +1,89 @@
+name: check
+permissions:
+  contents: read
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "The ref (branch or SHA) to process"
+        required: false
+        type: string
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash -xe {0}
+
+jobs:
+  fmt:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref }} # Use the ref if provided, otherwise defaults to the current branch/commit
+
+      - uses: nixbuild/nix-quick-install-action@v30
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+          nix_conf: |
+            extra-substituters = https://cache.garnix.io
+            extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g
+      - name: Populate the nix store
+        run: |
+          nix develop .#noObelisk --command echo
+
+      - name: cargo fmt
+        run: nix develop .#noObelisk --command cargo fmt --check
+
+  check-dev-deps:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: nixbuild/nix-quick-install-action@v30
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+          nix_conf: |
+            extra-substituters = https://cache.garnix.io
+            extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g
+      - name: Populate the nix store
+        run: |
+          nix develop --command echo
+
+      - run: nix develop --command ./scripts/dev-deps.sh
+
+      - run: cat dev-deps.txt
+
+      - run: |
+          if git diff --quiet -- dev-deps.txt; then
+              echo "No changes in dev-deps"
+          else
+              echo "Changes in dev-deps detected:"
+              echo "$(git diff -- dev-deps.txt)"
+              exit 1
+          fi
+
+  clippy:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: nixbuild/nix-quick-install-action@v30
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+          nix_conf: |
+            extra-substituters = https://cache.garnix.io
+            extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g
+      - name: Populate the nix store
+        run: |
+          nix develop .#noObelisk --command echo
+
+      - name: cargo clippy
+        run: nix develop .#noObelisk --command cargo clippy --workspace --all-targets -- -D warnings
+

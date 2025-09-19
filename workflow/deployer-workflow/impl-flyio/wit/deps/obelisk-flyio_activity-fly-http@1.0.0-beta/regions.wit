@@ -1,0 +1,77 @@
+package obelisk-flyio:activity-fly-http@1.0.0-beta;
+
+interface regions {
+
+    enum region {
+        /// Amsterdam, Netherlands
+        ams,
+        /// Stockholm, Sweden
+        arn,
+        /// Atlanta, Georgia (US)
+        atl,
+        /// Bogotá, Colombia
+        bog,
+        /// Mumbai, India
+        bom,
+        /// Boston, Massachusetts (US)
+        bos,
+        /// Paris, France
+        cdg,
+        /// Denver, Colorado (US)
+        den,
+        /// Dallas, Texas (US)
+        dfw,
+        /// Secaucus, NJ (US)
+        ewr,
+        /// Ezeiza, Argentina
+        eze,
+        /// Frankfurt, Germany
+        fra,
+        /// Guadalajara, Mexico
+        gdl,
+        /// Rio de Janeiro, Brazil
+        gig,
+        /// Sao Paulo, Brazil
+        gru,
+        /// Hong Kong, Hong Kong
+        hkg,
+        /// Ashburn, Virginia (US)
+        iad,
+        /// Johannesburg, South Africa
+        jnb,
+        /// Los Angeles, California (US)
+        lax,
+        /// London, United Kingdom
+        lhr,
+        /// Madrid, Spain
+        mad,
+        /// Miami, Florida (US)
+        mia,
+        /// Tokyo, Japan
+        nrt,
+        /// Chicago, Illinois (US)
+        ord,
+        /// Bucharest, Romania
+        otp,
+        /// Phoenix, Arizona (US)
+        phx,
+        /// Querétaro, Mexico
+        qro,
+        /// Santiago, Chile
+        scl,
+        /// Seattle, Washington (US)
+        sea,
+        /// Singapore, Singapore
+        sin,
+        /// San Jose, California (US)
+        sjc,
+        /// Sydney, Australia
+        syd,
+        /// Warsaw, Poland
+        waw,
+        /// Montreal, Canada
+        yul,
+        /// Toronto, Canada
+        yyz,
+    }
+}

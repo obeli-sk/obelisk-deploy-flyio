@@ -1,0 +1,30 @@
+api.listening_addr = "127.0.0.1:5005"
+webui.listening_addr = "127.0.0.1:8080"
+
+log.stdout.enabled = true
+
+[[activity_wasm]]
+name = "activity_fly_http"
+location.path = "/home/tomas/work/workspaces/workflow/apps/components-flyio/target/wasm32-wasip2/release/activity_fly_http.wasm"
+max_retries = 0
+exec.lock_expiry.seconds = 15
+env_vars = ["FLY_API_TOKEN"]
+forward_stdout = "stderr"
+forward_stderr = "stderr"
+
+[[webhook_endpoint]]
+name = "webhook_fly_secrets_updater"
+location.path = "/home/tomas/work/workspaces/workflow/apps/components-flyio/target/wasm32-wasip2/release/webhook_fly_secrets_updater.wasm"
+http_server = "webhook_server"
+routes = [{ methods = ["POST"], route = "/" }]
+env_vars = ["FLY_API_TOKEN"]
+forward_stdout = "stderr"
+forward_stderr = "stderr"
+
+[[workflow]]
+name = "deployer_flyio"
+location.path = "${OBELISK_TOML_DIR}/target/wasm32-unknown-unknown/release/obelisk_deployer_flyio.wasm"
+
+[[http_server]]
+name = "webhook_server"
+listening_addr = "0.0.0.0:9090"

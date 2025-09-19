@@ -1,0 +1,87 @@
+package obelisk-flyio:workflow@1.0.0-beta;
+
+interface workflow {
+    use obelisk-flyio:activity-fly-http/machines@1.0.0-beta.{machine-id, volume-id};
+
+    // Same syntax as in obelisk.toml - "key" or "key=val"
+    type env-var = string;
+
+    record volume-config {
+        size-in-gb: u16,
+        name: string,
+    }
+
+    record obelisk-config {
+        activity-wasm-list: option<list<activity-wasm>>,
+        workflow-list: option<list<workflow>>,
+        webhook-endpoint-list: option<list<webhok-endpoint>>,
+    }
+
+    record activity-wasm {
+        name: string,
+        location-oci: string,
+        env-vars: option<list<env-var>>,
+        lock-expiry-seconds: option<u32>,
+    }
+
+    record workflow {
+        name: string,
+        location-oci: string,
+    }
+
+    record webhok-endpoint {
+        name: string,
+        location-oci: string,
+        routes: list<route>,
+        env-vars: option<list<env-var>>,
+    }
+
+    record route {
+        methods: list<string>,
+        path: string,
+    }
+
+    record secret-key {
+        name: string,
+        /// Set to true if the app already contains this secret.
+        present: bool,
+    }
+
+    variant app-create-error {
+        /// Name alreay taken
+        conflict,
+        /// Cannot create the volume
+        volume-create-error(string),
+        /// Cannot start the temporary VM
+        temp-vm-error(string),
+        /// Cannot place files on the volume.
+        volume-write-error(string),
+        /// Error running `obelisk server verify -i`
+        verify-error(string),
+    }
+
+    variant serve-error {
+        vm-start-error(string),
+        healthcheck-error(string),
+    }
+
+    /// Create a fly app (if not exists).
+    /// Prepare volume, if not exists. If it exists with
+    /// Launch a temporary VM. It will be cleaned up at the end of execution.
+    /// Store the config file and download WASM components + AOT generated code (`obelisk server verify --ignore-missing-env-vars`).
+    /// Return list of secret keys the config requires.
+    app-create: func(app-name: string, volume-config: volume-config, config: obelisk-config) -> result<list<secret-key>, app-create-error>;
+
+    /// Read the app's configuration and return its secret keys.
+    secret-list-keys: func(app-name: string) -> list<secret-key>;
+
+    /// Serve Obelisk app on a VM.
+    serve: func(app-name: string) -> result<_, serve-error>;
+
+    /// Delete application with all its associated resources.
+    app-delete: func(name: string);
+}
+
+world exports {
+    export workflow;
+}

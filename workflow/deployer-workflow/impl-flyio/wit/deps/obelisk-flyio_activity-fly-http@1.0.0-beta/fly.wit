@@ -1,0 +1,241 @@
+package obelisk-flyio:activity-fly-http@1.0.0-beta;
+
+/// [Apps API](https://docs.machines.dev/#tag/apps/get/apps)
+interface apps {
+
+    record app {
+        name: string,
+        id: string,
+    }
+
+    /// Idempotently create a new fly.io app.
+    /// Using "personal" alias for org-slug works but will return an error on retry: "already exists but belongs to different organization"
+    put: func(org-slug: string, app-name: string) -> result<app, string>;
+
+    /// List all application within an organization.
+    %list: func(org-slug: string) -> result<list<app>, string>;
+
+    /// Delete application with all its associated resources.
+    delete: func(app-name: string, force: bool) -> result<_, string>;
+}
+
+/// [Machines API](https://docs.machines.dev/#tag/machines/get/apps/{app_name}/machines)
+interface machines {
+    use regions.{region};
+    use volumes.{volume-id};
+
+    type machine-id = string;
+
+    enum machine-state {
+        created,
+        starting,
+        started,
+        stopping,
+        stopped,
+        suspending,
+        suspended,
+        replacing,
+        replaced,
+        destroying,
+        destroyed,
+    }
+
+    enum host-status {
+        ok,
+        unknown,
+        unreachable,
+    }
+
+    record machine {
+        config: machine-config,
+        created-at: string,
+        updated-at: string,
+        id: string,
+        instance-id: string,
+        name: string,
+        state: string,
+        region: region,
+        host-status: host-status,
+    }
+
+    record machine-config {
+        image: string,
+        guest: option<guest-config>,
+        auto-destroy: option<bool>,
+        init: option<init-config>,
+        env: option<list<tuple<string, string>>>,
+        restart: option<machine-restart>,
+        stop-config: option<stop-config>,
+        mounts: option<list<mount>>,
+        services: option<list<service-config>>,
+    }
+
+    record mount {
+        volume: volume-id,
+        path: string,
+    }
+
+    record guest-config {
+        cpu-kind: option<cpu-kind>,
+        cpus: option<u64>,
+        memory-mb: option<u64>,
+        kernel-args: option<list<string>>,
+    }
+
+    enum cpu-kind {
+        shared,
+        performance,
+    }
+
+    enum restart-policy {
+        no,
+        always,
+        on-failure,
+    }
+
+    record machine-restart {
+        max-retries: option<u32>,
+        policy: restart-policy,
+    }
+
+    record init-config {
+        cmd: option<list<string>>,
+        entrypoint: option<list<string>>,
+        exec: option<list<string>>,
+        kernel-args: option<list<string>>,
+        swap-size-mb: option<u64>,
+        tty: option<bool>,
+    }
+
+    record stop-config {
+        signal: option<string>,
+        timeout: option<u64>,
+    }
+
+    record exec-response {
+        exit-code: option<s32>,
+        exit-signal: option<s32>,
+        stderr: option<string>,
+        stdout: option<string>,
+    }
+
+    /// Configuration for a single service (port forwarding rule)
+    record service-config {
+        internal-port: u16,
+        protocol: service-protocol,
+        ports: list<port-config>,
+    }
+
+    /// Protocol for a service
+    enum service-protocol {
+        tcp,
+        udp,
+    }
+
+    /// Configuration for an external port
+    record port-config {
+        port: u16,
+        handlers: list<port-handler>,
+    }
+
+    /// Handlers for a port
+    enum port-handler {
+        http,
+        tls,
+        pg, // PostgreSQL
+    }
+
+    /// List machines
+    %list: func(app-name: string) -> result<list<machine>, string>;
+
+    /// Create and start a machine under `app-name` with name `machine-name` and return its ID.
+    /// If machine already exists, attributes of `machine-config` are not updated, just the machine ID is returned.
+    create: func(app-name: string, machine-name: string, machine-config: machine-config, region: option<region>) -> result<string, string>;
+
+    update: func(app-name: string, machine-id: machine-id, machine-config: machine-config, region: option<region>) -> result<_, string>;
+
+    suspend: func(app-name: string, machine-id: machine-id) -> result<_, string>;
+
+    stop: func(app-name: string, machine-id: machine-id) -> result<_, string>;
+
+    start: func(app-name: string, machine-id: machine-id) -> result<_, string>;
+
+    restart: func(app-name: string, machine-id: machine-id) -> result<_, string>;
+
+    delete: func(app-name: string, machine-id: machine-id, force: bool) -> result<_, string>;
+
+    exec: func(app-name: string, machine-id: machine-id, command: list<string>) -> result<exec-response, string>;
+}
+
+/// [App Secrets API](https://docs.machines.dev/#tag/secrets/get/apps/{app_name}/secrets)
+/// There is no function for inserting secret values because all parameters are persisted,
+/// use the webhook endpoint instead.
+interface secrets {
+
+    record secret {
+        name: string,
+        digest: string,
+    }
+
+    /// List all secret keys and  value digests for a given app.
+    %list: func(app-name: string) -> result<list<secret>, string>;
+
+    /// Delete a secret from a given app.
+    delete: func(app-name: string, secret-name: string) -> result<_, string>;
+
+}
+
+/// [Volumes API](https://docs.machines.dev/#tag/volumes)
+interface volumes {
+    use regions.{region};
+
+    type volume-id = string;
+
+    record volume {
+        id: string,
+        name: string,
+        state: string,
+        region: region,
+        size-gb: u32,
+        encrypted: bool,
+        attached-machine-id: option<string>,
+        host-status: string,
+        created-at: string,
+        blocks: u32,
+        block-size: u32,
+        blocks-free: u32,
+        blocks-avail: u32,
+        bytes-used: u32,
+        bytes-total: u32,
+    }
+
+    record volume-create-request {
+        name: string,
+        size-gb: u32,
+        region: region,
+        require-unique-zone: option<bool>,
+    }
+
+    /// List all the volumes in an app.
+    %list: func(app-name: string) -> result<list<volume>, string>;
+
+    /// Create a volume.
+    create: func(app-name: string, request: volume-create-request) -> result<volume, string>;
+
+    /// Get a specific volume.
+    get: func(app-name: string, volume-id: volume-id) -> result<volume, string>;
+
+    /// Extend a volume.
+    extend: func(app-name: string, volume-id: volume-id, new-size-gb: u32) -> result<_, string>;
+
+    /// Delete a volume permanently.
+    delete: func(app-name: string, volume-id: volume-id) -> result<_, string>;
+
+}
+
+world exports {
+    export apps;
+    export machines;
+    export secrets;
+    export volumes;
+}
