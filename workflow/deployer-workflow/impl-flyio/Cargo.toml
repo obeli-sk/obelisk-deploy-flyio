@@ -12,6 +12,8 @@ crate-type = ["cdylib"]
 
 [dependencies]
 anyhow.workspace = true
+const_format.workspace = true
+hashbrown.workspace = true
 wit-bindgen.workspace = true
 
 [build-dependencies]

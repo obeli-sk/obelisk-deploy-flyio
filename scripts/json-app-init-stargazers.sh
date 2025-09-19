@@ -2,11 +2,9 @@
 
 cat <<EOF
 [
-"stargazers2",
-{
-    "size-in-gb":1,
-    "name": "stargazers"
-},
+"$FLY_ORG_SLUG",
+"$FLY_APP_NAME",
+true,
 {
     "activity-wasm-list":[
         {
@@ -26,12 +24,6 @@ cat <<EOF
             "location-oci": "docker.io/getobelisk/demo_stargazers_activity_db_turso:2025-09-01@sha256:87ec6d390e25640e1d968fb419086742c53f5731b29f86d567212cb46b4fa2ed",
             "env-vars": ["TURSO_TOKEN", "TURSO_LOCATION"],
             "lock-expiry-seconds": 5
-        },
-        {
-            "name": "mlist_activity_db_turso",
-            "location-oci": "docker.io/getobelisk/mlist_activity_db_turso:2025-05-08-2@sha256:55aa06ebd6f8736be14343a843cdc6488b88b412ce2e878c47b81f9b18a9c326",
-            "env-vars": ["MLIST_TURSO_TOKEN", "MLIST_TURSO_LOCATION"],
-            "lock-expiry-seconds": 5
         }
     ],
     "workflow-list":[
@@ -46,11 +38,6 @@ cat <<EOF
             "location-oci": "docker.io/getobelisk/demo_stargazers_webhook:2025-09-01@sha256:0fb0042da931bedea3f616a9eca40468032625d0fd69333dc2733f576a8887d9",
             "routes": [{ "methods": ["POST", "GET"], "path": "" }],
             "env-vars": ["GITHUB_WEBHOOK_SECRET"]
-        },
-        {
-            "name": "mlist_webhook",
-            "location-oci": "docker.io/getobelisk/mlist_webhook:2025-05-08-2@sha256:34e0a7af37fc2cf5b6863689c3c72273b6e05d2e3c4548663a4b160850a6d57c",
-            "routes": [{ "methods": ["POST"], "path": "/mlist" }]
         }
     ]
 }

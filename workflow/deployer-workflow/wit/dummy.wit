@@ -1,3 +1,5 @@
+// Default world used by `obelisk generate`
+
 package any:any;
 
 world any {

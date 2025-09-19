@@ -8,7 +8,13 @@ interface apps {
         id: string,
     }
 
+    /// Get app details if the app exists.
+    get: func(app-name: string) -> result<option<app>, string>;
+
     /// Idempotently create a new fly.io app.
+    /// If the app creation fails, check if the app already exists in the correct
+    /// organization, otherwise return with an error.
+    ///
     /// Using "personal" alias for org-slug works but will return an error on retry: "already exists but belongs to different organization"
     put: func(org-slug: string, app-name: string) -> result<app, string>;
 
@@ -61,6 +67,7 @@ interface machines {
     record machine-config {
         image: string,
         guest: option<guest-config>,
+        /// Destroy the VM after first exec
         auto-destroy: option<bool>,
         init: option<init-config>,
         env: option<list<tuple<string, string>>>,
@@ -147,6 +154,8 @@ interface machines {
 
     /// List machines
     %list: func(app-name: string) -> result<list<machine>, string>;
+
+    get: func(app-name: string, machine-id: machine-id) -> result<option<machine>, string>;
 
     /// Create and start a machine under `app-name` with name `machine-name` and return its ID.
     /// If machine already exists, attributes of `machine-config` are not updated, just the machine ID is returned.

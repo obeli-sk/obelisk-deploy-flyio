@@ -2,4 +2,9 @@ package any:any;
 
 world any {
     include obelisk-flyio:workflow/exports@1.0.0-beta;
+
+    import obelisk-flyio:activity-fly-http/apps@1.0.0-beta;
+    import obelisk-flyio:activity-fly-http/machines@1.0.0-beta;
+    import obelisk-flyio:activity-fly-http/volumes@1.0.0-beta;
+    import obelisk:workflow/workflow-support@2.0.0;
 }

@@ -1,15 +1,9 @@
 package obelisk-flyio:workflow@1.0.0-beta;
 
 interface workflow {
-    use obelisk-flyio:activity-fly-http/machines@1.0.0-beta.{machine-id, volume-id};
 
     // Same syntax as in obelisk.toml - "key" or "key=val"
     type env-var = string;
-
-    record volume-config {
-        size-in-gb: u16,
-        name: string,
-    }
 
     record obelisk-config {
         activity-wasm-list: option<list<activity-wasm>>,
@@ -47,9 +41,7 @@ interface workflow {
         present: bool,
     }
 
-    variant app-create-error {
-        /// Name alreay taken
-        conflict,
+    variant app-init-modify-error {
         /// Cannot create the volume
         volume-create-error(string),
         /// Cannot start the temporary VM
@@ -60,26 +52,41 @@ interface workflow {
         verify-error(string),
     }
 
+    record app-cleanup-failed {
+        modify-error: app-init-modify-error,
+        cleanup-error: string,
+    }
+
+    variant app-init-error {
+        app-name-conflict,
+        app-create-error(string),
+        cleanup-ok(app-init-modify-error),
+        cleanup-failed(app-cleanup-failed),
+        cleanup-skipped(app-init-modify-error),
+    }
+
     variant serve-error {
         vm-start-error(string),
         healthcheck-error(string),
     }
 
-    /// Create a fly app (if not exists).
-    /// Prepare volume, if not exists. If it exists with
-    /// Launch a temporary VM. It will be cleaned up at the end of execution.
+    /// Chcek whether the app_name exists. If it does, return app-name-conflict.
+    /// Create a fly app.
+    /// Create a volume.
+    /// Launch a temporary VM.
     /// Store the config file and download WASM components + AOT generated code (`obelisk server verify --ignore-missing-env-vars`).
+    /// Shutdown and delete the temporary VM.
     /// Return list of secret keys the config requires.
-    app-create: func(app-name: string, volume-config: volume-config, config: obelisk-config) -> result<list<secret-key>, app-create-error>;
-
-    /// Read the app's configuration and return its secret keys.
-    secret-list-keys: func(app-name: string) -> list<secret-key>;
+    /// Any error except for app-name-conflict will trigger the whole app to be deleted, leaving the state as it was before this function was called.
+    app-init: func(
+        org-slug: string,
+        app-name: string,
+        cleanup: bool,
+        config: obelisk-config,
+        ) -> result<list<secret-key>, app-init-error>;
 
     /// Serve Obelisk app on a VM.
     serve: func(app-name: string) -> result<_, serve-error>;
-
-    /// Delete application with all its associated resources.
-    app-delete: func(name: string);
 }
 
 world exports {

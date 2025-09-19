@@ -6,7 +6,7 @@ log.stdout.enabled = true
 [[activity_wasm]]
 name = "activity_fly_http"
 location.path = "/home/tomas/work/workspaces/workflow/apps/components-flyio/target/wasm32-wasip2/release/activity_fly_http.wasm"
-max_retries = 0
+max_retries = 5
 exec.lock_expiry.seconds = 15
 env_vars = ["FLY_API_TOKEN"]
 forward_stdout = "stderr"
@@ -24,6 +24,8 @@ forward_stderr = "stderr"
 [[workflow]]
 name = "deployer_flyio"
 location.path = "${OBELISK_TOML_DIR}/target/wasm32-unknown-unknown/release/obelisk_deployer_flyio.wasm"
+backtrace.sources = { "${OBELISK_TOML_DIR}/workflow/deployer-workflow/impl-flyio/src/lib.rs" = "${OBELISK_TOML_DIR}/workflow/deployer-workflow/impl-flyio/src/lib.rs" }
+
 
 [[http_server]]
 name = "webhook_server"
