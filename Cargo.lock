@@ -184,6 +184,8 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "wit-bindgen",
+ "wit-bindgen-rust",
+ "wit-parser",
 ]
 
 [[package]]

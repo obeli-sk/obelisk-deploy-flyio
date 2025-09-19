@@ -13,3 +13,8 @@ crate-type = ["cdylib"]
 [dependencies]
 anyhow.workspace = true
 wit-bindgen.workspace = true
+
+[build-dependencies]
+anyhow.workspace = true
+wit-bindgen-rust.workspace = true
+wit-parser.workspace = true
