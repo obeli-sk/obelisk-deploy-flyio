@@ -12,7 +12,8 @@ use generated::{
     obelisk_flyio::activity_fly_http::{
         self,
         machines::{
-            CpuKind, GuestConfig, InitConfig, MachineConfig, MachineRestart, Mount, RestartPolicy,
+            CpuKind, GuestConfig, InitConfig, MachineConfig, MachineRestart, MachineState, Mount,
+            RestartPolicy,
         },
         regions::Region,
         volumes::VolumeCreateRequest,
@@ -86,16 +87,16 @@ fn app_modify_without_cleanup(
 
     // Wait until its state is "started"
     for _ in 0..10 {
-        let state = activity_fly_http::machines::get(app_name, &temp_vm)
+        let machine = activity_fly_http::machines::get(app_name, &temp_vm)
             .map_err(AppInitModifyError::TempVmError)?;
-        let state = state
+        let state = machine
             .ok_or_else(|| {
                 AppInitModifyError::TempVmError(
                     "cannot find temp VM that was created successfuly".to_string(),
                 )
             })?
             .state;
-        if state == "started" {
+        if state == MachineState::Started {
             break;
         }
         workflow_support::sleep(ScheduleAt::In(

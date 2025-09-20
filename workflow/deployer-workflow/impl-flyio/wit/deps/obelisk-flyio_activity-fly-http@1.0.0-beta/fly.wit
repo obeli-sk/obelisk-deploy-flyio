@@ -59,7 +59,7 @@ interface machines {
         id: string,
         instance-id: string,
         name: string,
-        state: string,
+        state: machine-state,
         region: region,
         host-status: host-status,
     }
