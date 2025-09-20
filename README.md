@@ -1,4 +1,3 @@
-
 Start the server
 ```sh
 just build serve
@@ -29,7 +28,6 @@ Delete the VM:
 obelisk client execution submit -f obelisk-flyio:activity-fly-http/machines@1.0.0-beta.delete -- \
 \"$FLY_APP_NAME\" \"$MACHINE_ID\" true
 ```
-
 
 Delete the app:
 ```sh

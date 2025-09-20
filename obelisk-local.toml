@@ -5,7 +5,7 @@ log.stdout.enabled = true
 
 [[activity_wasm]]
 name = "activity_fly_http"
-location.path = "/home/tomas/work/workspaces/workflow/apps/components-flyio/target/wasm32-wasip2/release/activity_fly_http.wasm"
+location.path = "${OBELISK_TOML_DIR}/../components-flyio/target/wasm32-wasip2/release/activity_fly_http.wasm"
 max_retries = 5
 exec.lock_expiry.seconds = 15
 env_vars = ["FLY_API_TOKEN"]
@@ -14,7 +14,7 @@ forward_stderr = "stderr"
 
 [[webhook_endpoint]]
 name = "webhook_fly_secrets_updater"
-location.path = "/home/tomas/work/workspaces/workflow/apps/components-flyio/target/wasm32-wasip2/release/webhook_fly_secrets_updater.wasm"
+location.path = "${OBELISK_TOML_DIR}/../components-flyio/target/wasm32-wasip2/release/webhook_fly_secrets_updater.wasm"
 http_server = "webhook_server"
 routes = [{ methods = ["POST"], route = "/" }]
 env_vars = ["FLY_API_TOKEN"]
