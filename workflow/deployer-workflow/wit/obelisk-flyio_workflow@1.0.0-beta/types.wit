@@ -64,7 +64,7 @@ interface types {
         app-name-conflict,
         app-create-error(string),
         app-init-modify-error(app-init-modify-error),
-        execution-failure,
+        execution-failed,
     }
 
     variant app-init-error {
@@ -75,13 +75,13 @@ interface types {
         /// App init failed, cleanup failed.
         /// The associated value contains the reason of failure, if available.
         cleanup-failed(app-cleanup-failed),
-        execution-failure,
+        execution-failed,
     }
 
     variant serve-error {
         vm-start-error(string),
         healthcheck-error(string),
-        execution-failure,
+        execution-failed,
     }
 
 }

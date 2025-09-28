@@ -35,7 +35,7 @@ const TEMP_VM_NAME: &str = "temp";
 const SLEEP: &str = "/usr/bin/sleep";
 const INFINITY: &str = "infinity";
 const VOLUME_MOUNT_PATH: &str = "/volume";
-const IMAGE: &str = "getobelisk/obelisk:0.24.2-ubuntu";
+const IMAGE: &str = "getobelisk/obelisk:0.25.1-ubuntu";
 const OBELISK_TOML_PATH: &str = formatcp!("{VOLUME_MOUNT_PATH}/obelisk.toml");
 const OBELISK_BIN_PATH: &str = "/obelisk/obelisk";
 const REGION: Region = Region::Ams; // TODO: Move to env var
@@ -205,7 +205,7 @@ impl Guest for Component {
                     AppInitError::AppNameConflict
                 }
                 AppInitNoCleanupError::AppInitModifyError(err) => cleanup(&app_name, Some(err)),
-                AppInitNoCleanupError::ExecutionFailure => cleanup(&app_name, None),
+                AppInitNoCleanupError::ExecutionFailed => cleanup(&app_name, None),
             },
         )
     }

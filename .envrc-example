@@ -9,6 +9,7 @@ export FLY_ORG_SLUG="personal"
 # App name: Either create fly.toml based on fly-example.toml and extract the app name, or just enter it here.
 export FLY_APP_NAME=$(grep '^app' fly.toml | sed -E 's/app *= *["'\'']([^"'\''"]+)["'\'']/\1/')
 
-export FLY_IMAGE="getobelisk/obelisk:0.24.1-ubuntu"
-export FLY_MACHINE_NAME="machine"
 export FLY_REGION="ams"
+
+// Only for directly running machines.create as described in README.md
+export FLY_MACHINE_NAME="some-machine"
