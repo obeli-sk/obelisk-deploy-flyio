@@ -4,7 +4,6 @@ cat <<EOF
 [
 "$FLY_ORG_SLUG",
 "$FLY_APP_NAME",
-true,
 {
     "activity-wasm-list":[
         {
