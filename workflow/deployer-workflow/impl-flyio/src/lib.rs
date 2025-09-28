@@ -1,4 +1,5 @@
 mod generated {
+    #![allow(clippy::empty_line_after_outer_attr)]
     include!(concat!(env!("OUT_DIR"), "/generated.rs"));
 }
 use const_format::formatcp;
@@ -109,7 +110,7 @@ fn app_modify_without_cleanup(
     let exec_response = activity_fly_http::machines::exec(
         app_name,
         &temp_vm,
-        &vec![
+        &[
             "sh".to_string(),
             "-c".to_string(),
             format!("cat <<EOF > {OBELISK_TOML_PATH}\n{obelisk_toml}"),
@@ -125,7 +126,7 @@ fn app_modify_without_cleanup(
     let exec_response = activity_fly_http::machines::exec(
         app_name,
         &temp_vm,
-        &vec![
+        &[
             OBELISK_BIN_PATH.to_string(),
             "server".to_string(),
             "verify".to_string(),
@@ -180,7 +181,7 @@ impl Guest for Component {
         })
     }
 
-    fn serve(app_name: String) -> Result<(), ServeError> {
+    fn serve(_app_name: String) -> Result<(), ServeError> {
         todo!()
     }
 }
