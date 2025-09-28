@@ -6,5 +6,5 @@ world any {
     import obelisk-flyio:activity-fly-http/apps@1.0.0-beta;
     import obelisk-flyio:activity-fly-http/machines@1.0.0-beta;
     import obelisk-flyio:activity-fly-http/volumes@1.0.0-beta;
-    import obelisk:workflow/workflow-support@2.0.0;
+    import obelisk:workflow/workflow-support@3.0.0;
 }

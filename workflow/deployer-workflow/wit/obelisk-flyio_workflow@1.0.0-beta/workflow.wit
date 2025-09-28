@@ -63,11 +63,13 @@ interface workflow {
         cleanup-ok(app-init-modify-error),
         cleanup-failed(app-cleanup-failed),
         cleanup-skipped(app-init-modify-error),
+        execution-failure,
     }
 
     variant serve-error {
         vm-start-error(string),
         healthcheck-error(string),
+        execution-failure,
     }
 
     /// Chcek whether the app_name exists. If it does, return app-name-conflict.
