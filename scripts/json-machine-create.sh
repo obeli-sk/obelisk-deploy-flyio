@@ -2,7 +2,7 @@
 
 cat <<EOF
 {
-    "image": "getobelisk/obelisk:0.24.2-ubuntu",
+    "image": "getobelisk/obelisk:0.25.1-ubuntu",
     "init": {
         "swap-size-mb": 256
     },
