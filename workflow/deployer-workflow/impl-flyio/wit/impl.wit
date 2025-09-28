@@ -1,10 +1,15 @@
 package any:any;
 
 world any {
-    include obelisk-flyio:workflow/exports@1.0.0-beta;
+    //include obelisk-flyio:workflow/exports@1.0.0-beta;
+    export obelisk-flyio:workflow/workflow@1.0.0-beta;
+
+    // Import the same interface for creating child workflows.
+    import obelisk-flyio:workflow/workflow@1.0.0-beta;
 
     import obelisk-flyio:activity-fly-http/apps@1.0.0-beta;
     import obelisk-flyio:activity-fly-http/machines@1.0.0-beta;
     import obelisk-flyio:activity-fly-http/volumes@1.0.0-beta;
+
     import obelisk:workflow/workflow-support@3.0.0;
 }

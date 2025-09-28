@@ -1,0 +1,87 @@
+package obelisk-flyio:workflow@1.0.0-beta;
+
+interface types {
+
+    // Same syntax as in obelisk.toml - "key" or "key=val"
+    type env-var = string;
+
+    record obelisk-config {
+        activity-wasm-list: option<list<activity-wasm>>,
+        workflow-list: option<list<workflow>>,
+        webhook-endpoint-list: option<list<webhok-endpoint>>,
+    }
+
+    record activity-wasm {
+        name: string,
+        location-oci: string,
+        env-vars: option<list<env-var>>,
+        lock-expiry-seconds: option<u32>,
+    }
+
+    record workflow {
+        name: string,
+        location-oci: string,
+    }
+
+    record webhok-endpoint {
+        name: string,
+        location-oci: string,
+        routes: list<route>,
+        env-vars: option<list<env-var>>,
+    }
+
+    record route {
+        methods: list<string>,
+        path: string,
+    }
+
+    record secret-key {
+        name: string,
+        /// Set to true if the app already contains this secret.
+        present: bool,
+    }
+
+    variant app-init-modify-error {
+        /// Cannot create the volume
+        volume-create-error(string),
+        /// Cannot start the temporary VM
+        temp-vm-error(string),
+        /// Cannot place files on the volume.
+        volume-write-error(string),
+        /// Error running `obelisk server verify -i`
+        verify-error(string),
+    }
+
+    record app-cleanup-failed {
+        /// The associated value contains the reason of failure, if available.
+        /// If the payload is missing a trap in child workflow occurred.
+        modify-error: option<app-init-modify-error>,
+        /// Reason why cleanup failed.
+        cleanup-error: string,
+    }
+
+    variant app-init-no-cleanup-error {
+        app-name-conflict,
+        app-create-error(string),
+        app-init-modify-error(app-init-modify-error),
+        execution-failure,
+    }
+
+    variant app-init-error {
+        app-name-conflict,
+        app-create-error(string),
+        /// App init failed, cleanup was successful.
+        cleanup-ok,
+        /// App init failed, cleanup failed.
+        /// The associated value contains the reason of failure, if available.
+        cleanup-failed(app-cleanup-failed),
+        execution-failure,
+    }
+
+    variant serve-error {
+        vm-start-error(string),
+        healthcheck-error(string),
+        execution-failure,
+    }
+
+}

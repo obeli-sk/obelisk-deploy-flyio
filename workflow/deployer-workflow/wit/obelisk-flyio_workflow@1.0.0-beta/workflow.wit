@@ -1,76 +1,7 @@
 package obelisk-flyio:workflow@1.0.0-beta;
 
 interface workflow {
-
-    // Same syntax as in obelisk.toml - "key" or "key=val"
-    type env-var = string;
-
-    record obelisk-config {
-        activity-wasm-list: option<list<activity-wasm>>,
-        workflow-list: option<list<workflow>>,
-        webhook-endpoint-list: option<list<webhok-endpoint>>,
-    }
-
-    record activity-wasm {
-        name: string,
-        location-oci: string,
-        env-vars: option<list<env-var>>,
-        lock-expiry-seconds: option<u32>,
-    }
-
-    record workflow {
-        name: string,
-        location-oci: string,
-    }
-
-    record webhok-endpoint {
-        name: string,
-        location-oci: string,
-        routes: list<route>,
-        env-vars: option<list<env-var>>,
-    }
-
-    record route {
-        methods: list<string>,
-        path: string,
-    }
-
-    record secret-key {
-        name: string,
-        /// Set to true if the app already contains this secret.
-        present: bool,
-    }
-
-    variant app-init-modify-error {
-        /// Cannot create the volume
-        volume-create-error(string),
-        /// Cannot start the temporary VM
-        temp-vm-error(string),
-        /// Cannot place files on the volume.
-        volume-write-error(string),
-        /// Error running `obelisk server verify -i`
-        verify-error(string),
-    }
-
-    record app-cleanup-failed {
-        modify-error: app-init-modify-error,
-        cleanup-error: string,
-    }
-
-    variant app-init-error {
-        app-name-conflict,
-        app-create-error(string),
-        cleanup-ok(app-init-modify-error),
-        cleanup-failed(app-cleanup-failed),
-        cleanup-skipped(app-init-modify-error),
-        execution-failure,
-    }
-
-    variant serve-error {
-        vm-start-error(string),
-        healthcheck-error(string),
-        execution-failure,
-    }
+    use types.{obelisk-config, secret-key, app-init-no-cleanup-error, app-init-error, serve-error};
 
     /// Chcek whether the app_name exists. If it does, return app-name-conflict.
     /// Create a fly app.
@@ -79,11 +10,19 @@ interface workflow {
     /// Store the config file and download WASM components + AOT generated code (`obelisk server verify --ignore-missing-env-vars`).
     /// Shutdown and delete the temporary VM.
     /// Return list of secret keys the config requires.
-    /// Any error except for app-name-conflict will trigger the whole app to be deleted, leaving the state as it was before this function was called.
+    app-init-no-cleanup-on-error: func(
+        org-slug: string,
+        app-name: string,
+        config: obelisk-config,
+        ) -> result<list<secret-key>, app-init-no-cleanup-error>;
+
+    /// Same as `app-init-no-cleanup` but performs cleanup on errors.
+    /// If an error occurs during app configuration
+    /// the app is deleted, leaving the state as it was before this function was called.
+    /// If the cleanup fails as well `cleanup-error` is raised.
     app-init: func(
         org-slug: string,
         app-name: string,
-        cleanup: bool,
         config: obelisk-config,
         ) -> result<list<secret-key>, app-init-error>;
 

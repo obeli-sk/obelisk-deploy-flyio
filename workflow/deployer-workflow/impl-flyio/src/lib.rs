@@ -5,19 +5,25 @@ mod generated {
 use const_format::formatcp;
 use generated::{
     export,
-    exports::obelisk_flyio::workflow::workflow::{
-        AppCleanupFailed, AppInitError, AppInitModifyError, Guest, ObeliskConfig, SecretKey,
-        ServeError,
-    },
+    exports::obelisk_flyio::workflow::workflow::Guest,
     obelisk::{types::time::ScheduleAt, workflow::workflow_support},
-    obelisk_flyio::activity_fly_http::{
-        self,
-        machines::{
-            CpuKind, GuestConfig, InitConfig, MachineConfig, MachineRestart, MachineState, Mount,
-            RestartPolicy,
+    obelisk_flyio::{
+        activity_fly_http::{
+            self,
+            machines::{
+                CpuKind, GuestConfig, InitConfig, MachineConfig, MachineRestart, MachineState,
+                Mount, RestartPolicy,
+            },
+            regions::Region,
+            volumes::VolumeCreateRequest,
         },
-        regions::Region,
-        volumes::VolumeCreateRequest,
+        workflow::{
+            types::{AppCleanupFailed, AppInitModifyError},
+            workflow::{
+                self as workflow_import, AppInitError, AppInitNoCleanupError, ObeliskConfig,
+                SecretKey, ServeError,
+            },
+        },
     },
 };
 
@@ -142,7 +148,8 @@ fn app_modify_without_cleanup(
         )));
     }
     // Attempt to shutdown the temp VM.
-    let _ = activity_fly_http::machines::stop(app_name, &temp_vm); // Ignore failure to shut down, temp VM will be deleted with force.
+    // Ignore failure to shut down, temp VM will be deleted with force.
+    let _ = activity_fly_http::machines::stop(app_name, &temp_vm);
     activity_fly_http::machines::delete(app_name, &temp_vm, true)
         .map_err(AppInitModifyError::TempVmError)?;
 
@@ -150,35 +157,57 @@ fn app_modify_without_cleanup(
     Ok(get_secret_keys(&config))
 }
 
+fn cleanup(app_name: &str, modify_error: Option<AppInitModifyError>) -> AppInitError {
+    // Delete the app with force.
+    match activity_fly_http::apps::delete(app_name, true) {
+        Ok(()) => AppInitError::CleanupOk,
+        Err(cleanup_error) => AppInitError::CleanupFailed(AppCleanupFailed {
+            modify_error,
+            cleanup_error,
+        }),
+    }
+}
+
 impl Guest for Component {
+    fn app_init_no_cleanup_on_error(
+        org_slug: String,
+        app_name: String,
+        config: ObeliskConfig,
+    ) -> Result<Vec<SecretKey>, AppInitNoCleanupError> {
+        // If the app already exists, fail with AppNameConflict
+        if activity_fly_http::apps::get(&app_name)
+            .map_err(AppInitNoCleanupError::AppCreateError)?
+            .is_some()
+        {
+            return Err(AppInitNoCleanupError::AppNameConflict);
+        }
+        // Create the app
+        activity_fly_http::apps::put(&org_slug, &app_name)
+            .map_err(AppInitNoCleanupError::AppCreateError)?;
+        app_modify_without_cleanup(&app_name, config)
+            .map_err(AppInitNoCleanupError::AppInitModifyError)
+    }
+
     fn app_init(
         org_slug: String,
         app_name: String,
-        cleanup: bool,
         config: ObeliskConfig,
     ) -> Result<Vec<SecretKey>, AppInitError> {
-        // If the app already exists, fail with AppNameConflict
-        if activity_fly_http::apps::get(&app_name)
-            .map_err(AppInitError::AppCreateError)?
-            .is_some()
-        {
-            return Err(AppInitError::AppNameConflict);
-        }
-        // Create app, clean up on error
-        activity_fly_http::apps::put(&org_slug, &app_name).map_err(AppInitError::AppCreateError)?;
-        app_modify_without_cleanup(&app_name, config).map_err(|modify_error| {
-            if cleanup {
-                match activity_fly_http::apps::delete(&app_name, true) {
-                    Ok(()) => AppInitError::CleanupOk(modify_error),
-                    Err(cleanup_error) => AppInitError::CleanupFailed(AppCleanupFailed {
-                        modify_error,
-                        cleanup_error,
-                    }),
+        // Launch a child workflow by using import
+        workflow_import::app_init_no_cleanup_on_error(&org_slug, &app_name, &config).map_err(
+            |err| match err {
+                AppInitNoCleanupError::AppCreateError(err) => {
+                    // No cleanup needed, app creation failed.
+                    AppInitError::AppCreateError(err)
                 }
-            } else {
-                AppInitError::CleanupSkipped(modify_error)
-            }
-        })
+                AppInitNoCleanupError::AppNameConflict => {
+                    // No cleanup needed, app creation failed on name conflict.
+                    AppInitError::AppNameConflict
+                }
+                AppInitNoCleanupError::AppInitModifyError(err) => cleanup(&app_name, Some(err)),
+                AppInitNoCleanupError::ExecutionFailure => cleanup(&app_name, None),
+            },
+        )
     }
 
     fn serve(_app_name: String) -> Result<(), ServeError> {
