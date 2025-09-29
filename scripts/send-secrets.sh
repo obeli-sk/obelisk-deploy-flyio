@@ -20,7 +20,7 @@ while IFS= read -r line; do
     echo "Found: $key"
     read -u 3 -p "Send to server? (y/n) " confirm
     if [[ "$confirm" == "y" ]]; then
-      curl --fail  localhost:9090/ \
+      curl --fail localhost:9090/ \
         -X POST \
         -H "Content-Type: application/json" \
         -d '{"app_name":"'"$FLY_APP_NAME"'","name":"'"$key"'","value":"'"$val"'"}'

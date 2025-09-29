@@ -4,16 +4,14 @@ cat <<EOF
 {
     "image": "getobelisk/obelisk:0.25.1-ubuntu",
     "init": {
-        "swap-size-mb": 256
+        "swap-size-mb": 256,
+        "entrypoint":["/usr/bin/sleep"],
+        "cmd": ["infinity"]
     },
     "guest": {
         "cpu-kind": "shared",
         "cpus": 1,
         "memory-mb": 256
-    },
-    "init": {
-        "entrypoint":["/usr/bin/sleep"],
-        "cmd": ["infinity"]
     },
     "restart": {
         "policy": "no"
