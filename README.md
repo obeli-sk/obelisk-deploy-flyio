@@ -1,24 +1,23 @@
-Start the server
+Start Obelisk
 ```sh
 just build serve
 ```
 
-Initialize app
+Initialize fly.io app - creates an app, volume, temp VM, verifies the stargazer app and waits for secrets.
 ```sh
 obelisk client execution submit -f obelisk-flyio:workflow/workflow@1.0.0-beta.app-init \
 "$(./scripts/json-app-init-stargazers.sh)"
 ```
 
-Push secrets from `.envrc` file:
+In another terminal push secrets from stargazers' `.envrc` file into the fly.io app.
 ```sh
-./scripts/send-secrets.sh .envrc
+./scripts/secrets-send.sh .envrc
 ```
 
-List secret keys of the app:
-```sh
-obelisk client execution submit -f  obelisk-flyio:activity-fly-http/secrets@1.0.0-beta.list -- \
-\"$FLY_APP_NAME\"
-```
+When all required secrets are present, the `app-init` workflow finishes.
+
+
+## Utils
 
 Launch a VM:
 ```sh

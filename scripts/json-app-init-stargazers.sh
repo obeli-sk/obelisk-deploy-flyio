@@ -39,6 +39,7 @@ cat <<EOF
             "env-vars": ["GITHUB_WEBHOOK_SECRET"]
         }
     ]
-}
+},
+30
 ]
 EOF

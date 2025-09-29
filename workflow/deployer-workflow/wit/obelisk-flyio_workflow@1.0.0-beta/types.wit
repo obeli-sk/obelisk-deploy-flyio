@@ -35,12 +35,6 @@ interface types {
         path: string,
     }
 
-    record secret-key {
-        name: string,
-        /// Set to true if the app already contains this secret.
-        present: bool,
-    }
-
     variant app-init-modify-error {
         /// Cannot create the volume
         volume-create-error(string),
@@ -75,6 +69,8 @@ interface types {
         /// App init failed, cleanup failed.
         /// The associated value contains the reason of failure, if available.
         cleanup-failed(app-cleanup-failed),
+        /// Wait for secrets can be interrupted by deleting the app.
+        app-deleted,
         execution-failed,
     }
 

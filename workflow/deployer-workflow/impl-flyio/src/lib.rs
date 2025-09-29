@@ -24,11 +24,12 @@ use generated::{
             types::{AppCleanupFailed, AppInitModifyError},
             workflow::{
                 self as workflow_import, AppInitError, AppInitNoCleanupError, ObeliskConfig,
-                SecretKey, ServeError,
+                ServeError,
             },
         },
     },
 };
+use hashbrown::HashSet;
 
 struct Component;
 export!(Component with_types_in generated);
@@ -46,7 +47,7 @@ const REGION: Region = Region::Ams; // TODO: Move to env var
 fn app_modify_without_cleanup(
     app_name: &str,
     config: ObeliskConfig,
-) -> Result<Vec<SecretKey>, AppInitModifyError> {
+) -> Result<Vec<String>, AppInitModifyError> {
     // Create a volume
     let volume = activity_fly_http::volumes::create(
         app_name,
@@ -158,7 +159,7 @@ fn app_modify_without_cleanup(
         .map_err(AppInitModifyError::TempVmError)?;
 
     // All OK, return secrets that are needed by the configuration.
-    Ok(get_secret_keys(&config))
+    Ok(get_secret_keys(config))
 }
 
 fn cleanup(app_name: &str, modify_error: Option<AppInitModifyError>) -> AppInitError {
@@ -177,7 +178,7 @@ impl Guest for Component {
         org_slug: String,
         app_name: String,
         config: ObeliskConfig,
-    ) -> Result<Vec<SecretKey>, AppInitNoCleanupError> {
+    ) -> Result<Vec<String>, AppInitNoCleanupError> {
         // If the app already exists, fail with AppNameConflict
         if activity_fly_http::apps::get(&app_name)
             .map_err(AppInitNoCleanupError::AppCreateError)?
@@ -196,52 +197,74 @@ impl Guest for Component {
         org_slug: String,
         app_name: String,
         config: ObeliskConfig,
-    ) -> Result<Vec<SecretKey>, AppInitError> {
+        sleep_between_retries_seconds: u32,
+    ) -> Result<(), AppInitError> {
         // Launch a child workflow by using import
-        workflow_import::app_init_no_cleanup_on_error(&org_slug, &app_name, &config).map_err(
-            |err| match err {
-                AppInitNoCleanupError::AppCreateError(err) => {
-                    // No cleanup needed, app creation failed.
-                    AppInitError::AppCreateError(err)
-                }
-                AppInitNoCleanupError::AppNameConflict => {
-                    // No cleanup needed, app creation failed on name conflict.
-                    AppInitError::AppNameConflict
-                }
-                AppInitNoCleanupError::AppInitModifyError(err) => cleanup(&app_name, Some(err)),
-                AppInitNoCleanupError::ExecutionFailed => cleanup(&app_name, None),
-            },
+        let required_secrets = workflow_import::app_init_no_cleanup_on_error(
+            &org_slug, &app_name, &config,
         )
+        .map_err(|err| match err {
+            AppInitNoCleanupError::AppCreateError(err) => {
+                // No cleanup needed, app creation failed.
+                AppInitError::AppCreateError(err)
+            }
+            AppInitNoCleanupError::AppNameConflict => {
+                // No cleanup needed, app creation failed on name conflict.
+                AppInitError::AppNameConflict
+            }
+            AppInitNoCleanupError::AppInitModifyError(err) => cleanup(&app_name, Some(err)),
+            AppInitNoCleanupError::ExecutionFailed => cleanup(&app_name, None),
+        })?;
+        let required_secrets: HashSet<_> = required_secrets.into_iter().collect();
+        while !required_secrets.is_empty() {
+            let actual_secrets = match activity_fly_http::secrets::list(&app_name) {
+                Ok(actual_secrets) => actual_secrets
+                    .into_iter()
+                    .map(|secret| secret.name)
+                    .collect(),
+                Err(_) => {
+                    // has the app been deleted?
+                    match activity_fly_http::apps::get(&app_name) {
+                        Ok(None) => return Err(AppInitError::AppDeleted),
+                        Ok(Some(_)) | Err(_) => HashSet::new(), // app exists or unknown, keep looping.
+                    }
+                }
+            };
+            if required_secrets.is_subset(&actual_secrets) {
+                break;
+            }
+            workflow_support::sleep(ScheduleAt::In(SchedulingDuration::Seconds(
+                sleep_between_retries_seconds as u64,
+            )));
+        }
+        Ok(())
     }
 
     fn serve(_app_name: String) -> Result<(), ServeError> {
+        // Make sure no VM is running and a single volume is present.
+        // Run `obelisk server verify` in a temporary VM.
+        // Start the final VM.
         todo!()
     }
 }
 
-fn get_secret_keys(config: &ObeliskConfig) -> Vec<SecretKey> {
+fn get_secret_keys(config: ObeliskConfig) -> Vec<String> {
     let a_iter = config
         .activity_wasm_list
-        .iter()
+        .into_iter()
         .flatten()
-        .flat_map(|component| &component.env_vars)
+        .flat_map(|component| component.env_vars)
         .flatten()
         .filter(|env_var| !env_var.contains("="));
     let w_iter = config
         .webhook_endpoint_list
-        .iter()
+        .into_iter()
         .flatten()
-        .flat_map(|component| &component.env_vars)
+        .flat_map(|component| component.env_vars)
         .flatten()
         .filter(|env_var| !env_var.contains("="));
     let unique_keys: hashbrown::HashSet<_> = a_iter.chain(w_iter).collect();
-    unique_keys
-        .into_iter()
-        .map(|key| SecretKey {
-            name: key.to_string(),
-            present: false,
-        })
-        .collect()
+    unique_keys.into_iter().collect()
 }
 
 // FIXME: Insecure, use proper TOML serializer.
