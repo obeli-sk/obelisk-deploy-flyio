@@ -67,7 +67,7 @@ fn app_modify_without_cleanup(
             guest: Some(GuestConfig {
                 cpu_kind: Some(CpuKind::Shared),
                 cpus: Some(1),
-                memory_mb: Some(512),
+                memory_mb: Some(256),
                 kernel_args: None,
             }),
             auto_destroy: None, // Some(false) - was creating a stopped machine
@@ -253,7 +253,7 @@ sqlite.directory = "{VOLUME_MOUNT_PATH}/obelisk-sqlite"
 wasm.cache_directory = "{VOLUME_MOUNT_PATH}/wasm"
 wasm.codegen_cache.directory = "{VOLUME_MOUNT_PATH}olume/codegen"
 
-# wasm.parallel_compilation = false
+wasm.parallel_compilation = false
 wasm.backtrace.persist = false # Speed up execution
 
 api.listening_addr = "[::]:5005"
