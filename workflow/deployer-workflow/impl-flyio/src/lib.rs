@@ -6,7 +6,10 @@ use const_format::formatcp;
 use generated::{
     export,
     exports::obelisk_flyio::workflow::workflow::Guest,
-    obelisk::{types::time::ScheduleAt, workflow::workflow_support},
+    obelisk::{
+        types::time::{Duration as SchedulingDuration, ScheduleAt},
+        workflow::workflow_support,
+    },
     obelisk_flyio::{
         activity_fly_http::{
             self,
@@ -106,9 +109,7 @@ fn app_modify_without_cleanup(
         if state == MachineState::Started {
             break;
         }
-        workflow_support::sleep(ScheduleAt::In(
-            generated::obelisk::types::time::Duration::Seconds(1),
-        ));
+        workflow_support::sleep(ScheduleAt::In(SchedulingDuration::Seconds(1)));
     }
 
     // Write obelisk.toml
@@ -150,6 +151,9 @@ fn app_modify_without_cleanup(
     // Attempt to shutdown the temp VM.
     // Ignore failure to shut down, temp VM will be deleted with force.
     let _ = activity_fly_http::machines::stop(app_name, &temp_vm);
+    // Wait a bit for clean shutdown
+    workflow_support::sleep(ScheduleAt::In(SchedulingDuration::Seconds(5)));
+    // Destroy the VM with force.
     activity_fly_http::machines::delete(app_name, &temp_vm, true)
         .map_err(AppInitModifyError::TempVmError)?;
 
