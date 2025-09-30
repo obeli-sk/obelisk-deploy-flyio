@@ -46,19 +46,15 @@ interface types {
         volume-write-error(string),
         /// Error running `obelisk server verify -i`
         verify-error(string),
+        /// Trap (panic) during execution
+        execution-failed,
     }
 
     record app-cleanup-failed {
-        /// The associated value contains the reason of failure, if available.
-        /// If the payload is missing a trap in child workflow occurred.
-        modify-error: option<app-init-modify-error>,
+        /// Reason of the original failure.
+        modify-error: app-init-modify-error,
         /// Reason why cleanup failed.
         cleanup-error: string,
-    }
-
-    variant app-init-no-cleanup-error {
-        app-init-modify-error(app-init-modify-error),
-        execution-failed,
     }
 
     variant app-init-error {

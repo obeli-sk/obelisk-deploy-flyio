@@ -23,9 +23,7 @@ use generated::{
         },
         workflow::{
             types::{AppCleanupFailed, AppInitModifyError},
-            workflow::{
-                self as workflow_import, AppInitError, AppInitNoCleanupError, ObeliskConfig,
-            },
+            workflow::{self as workflow_import, AppInitError, ObeliskConfig},
         },
     },
 };
@@ -174,7 +172,7 @@ fn app_modify_without_cleanup(
     Ok(get_secret_keys(config))
 }
 
-fn cleanup(app_name: &str, modify_error: Option<AppInitModifyError>) -> AppInitError {
+fn cleanup(app_name: &str, modify_error: AppInitModifyError) -> AppInitError {
     // Delete the app with force.
     match activity_fly_http::apps::delete(app_name, true) {
         Ok(()) => AppInitError::CleanupOk,
@@ -203,9 +201,8 @@ impl Guest for Component {
     fn app_modify_no_cleanup_on_error(
         app_name: String,
         config: ObeliskConfig,
-    ) -> Result<Vec<String>, AppInitNoCleanupError> {
+    ) -> Result<Vec<String>, AppInitModifyError> {
         app_modify_without_cleanup(&app_name, config)
-            .map_err(AppInitNoCleanupError::AppInitModifyError)
     }
 
     fn app_init(
@@ -217,10 +214,7 @@ impl Guest for Component {
         app_create(&org_slug, &app_name)?;
         // Launch a child workflow by using import
         let required_secrets = workflow_import::app_modify_no_cleanup_on_error(&app_name, &config)
-            .map_err(|err| match err {
-                AppInitNoCleanupError::AppInitModifyError(err) => cleanup(&app_name, Some(err)),
-                AppInitNoCleanupError::ExecutionFailed => cleanup(&app_name, None),
-            })?;
+            .map_err(|err| cleanup(&app_name, err))?;
         // Sleep until all requested secrets are stored in the app.
         let required_secrets: HashSet<_> = required_secrets.into_iter().collect();
         while !required_secrets.is_empty() {
