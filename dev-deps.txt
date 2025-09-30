@@ -1,5 +1,6 @@
 cargo-edit-upgrade 0.13.7
 cargo-expand 1.0.116
+cargo generate 0.23.5
 cargo-insta 1.43.2
 cargo-nextest 0.9.103
 just 1.42.4

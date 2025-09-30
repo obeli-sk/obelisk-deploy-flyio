@@ -9,6 +9,7 @@ cd "$(dirname "$0")/.."
 rm -f dev-deps.txt
 cargo upgrade --version >> dev-deps.txt
 cargo-expand --version >> dev-deps.txt
+cargo-generate --version >> dev-deps.txt
 cargo-insta --version >> dev-deps.txt
 cargo-nextest --version | head -n 1 >> dev-deps.txt
 just --version >> dev-deps.txt
