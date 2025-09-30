@@ -5,7 +5,7 @@ log.stdout.enabled = true
 
 [[activity_wasm]]
 name = "activity_fly_http"
-location.oci = "docker.io/getobelisk/components_flyio_activity_fly_http:2025-09-29@sha256:ef5586c6f3f9b01cb4177510af4f1fd7e307771fb798863409634706412eeda9"
+location.oci = "docker.io/getobelisk/components_flyio_activity_fly_http:2025-09-30@sha256:4c8501b794f093a965c3a5e1274feb49ac69aa6d3e0a18dd829050524d7fe5af"
 exec.lock_expiry.seconds = 15
 env_vars = ["FLY_API_TOKEN"]
 forward_stdout = "stderr"
@@ -13,7 +13,7 @@ forward_stderr = "stderr"
 
 [[webhook_endpoint]]
 name = "webhook_fly_secrets_updater"
-location.oci = "docker.io/getobelisk/components_flyio_webhook_fly_secrets_updater:2025-09-29@sha256:0725b6a074e549eec9aa38dd0f018c9420f68fdc0ee00e51ea7bc51cefb07a8e"
+location.oci = "docker.io/getobelisk/components_flyio_webhook_fly_secrets_updater:2025-09-30@sha256:360ba2106bddbb3bd14785ccda7248446d70b3b5b308e8ee1366eb60b9248f08"
 http_server = "webhook_server"
 routes = [{ methods = ["POST"], route = "/" }]
 env_vars = ["FLY_API_TOKEN"]

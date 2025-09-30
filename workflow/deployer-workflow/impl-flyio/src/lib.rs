@@ -13,9 +13,10 @@ use generated::{
     obelisk_flyio::{
         activity_fly_http::{
             self,
+            ips::{IpRequest, IpVariant, Ipv6Config},
             machines::{
                 CpuKind, GuestConfig, InitConfig, MachineConfig, MachineRestart, MachineState,
-                Mount, RestartPolicy,
+                Mount, PortConfig, PortHandler, RestartPolicy, ServiceConfig, ServiceProtocol,
             },
             regions::Region,
             volumes::VolumeCreateRequest,
@@ -42,12 +43,24 @@ const VOLUME_MOUNT_PATH: &str = "/volume";
 const IMAGE: &str = "getobelisk/obelisk:0.25.1-ubuntu";
 const OBELISK_TOML_PATH: &str = formatcp!("{VOLUME_MOUNT_PATH}/obelisk.toml");
 const OBELISK_BIN_PATH: &str = "/obelisk/obelisk";
-const REGION: Region = Region::Ams; // TODO: Move to env var
+const REGION: Region = Region::Ams;
+const WEBHOOK_PORT: u16 = 9090;
 
 fn app_modify_without_cleanup(
     app_name: &str,
     config: ObeliskConfig,
 ) -> Result<Vec<String>, AppInitModifyError> {
+    // Allocate an IPv6 address first.
+    activity_fly_http::ips::allocate(
+        app_name,
+        IpRequest {
+            config: IpVariant::Ipv6(Ipv6Config {
+                region: Some(REGION),
+            }),
+        },
+    )
+    .map_err(AppInitModifyError::IpAllocateError)?;
+
     // Create a volume
     activity_fly_http::volumes::create(
         app_name,
@@ -59,6 +72,7 @@ fn app_modify_without_cleanup(
         },
     )
     .map_err(AppInitModifyError::VolumeCreateError)?;
+
     // Launch a temporary VM
     let temp_vm = activity_fly_http::machines::create(
         app_name,
@@ -238,7 +252,7 @@ impl Guest for Component {
                 sleep_between_retries_seconds as u64,
             )));
         }
-        // TODO: Port forwarding
+
         // Launch the final VM
         activity_fly_http::machines::create(
             &app_name,
@@ -275,7 +289,14 @@ impl Guest for Component {
                     volume: VOLUME_NAME.to_string(),
                     path: VOLUME_MOUNT_PATH.to_string(),
                 }]),
-                services: None,
+                services: Some(vec![ServiceConfig {
+                    internal_port: WEBHOOK_PORT,
+                    protocol: ServiceProtocol::Tcp,
+                    ports: vec![PortConfig {
+                        port: 443,
+                        handlers: vec![PortHandler::Tls],
+                    }],
+                }]),
             },
             Some(REGION),
         )
@@ -326,7 +347,7 @@ level = "WARN,obelisk=info"
 
 [[http_server]]
 name = "{WEBHOOK_SERVER_NAME}"
-listening_addr = "0.0.0.0:9090"
+listening_addr = "0.0.0.0:{WEBHOOK_PORT}"
 
 "#
     );

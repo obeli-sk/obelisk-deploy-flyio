@@ -36,6 +36,8 @@ interface types {
     }
 
     variant app-init-modify-error {
+        /// Cannot allocate an IP address
+        ip-allocate-error(string),
         /// Cannot create the volume
         volume-create-error(string),
         /// Cannot start the temporary VM

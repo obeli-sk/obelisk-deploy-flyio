@@ -25,6 +25,47 @@ interface apps {
     delete: func(app-name: string, force: bool) -> result<_, string>;
 }
 
+interface ips {
+    use regions.{region};
+
+    type ip-address = string;
+
+    record ipv4-config {
+        shared: bool,
+        region: option<region>
+    }
+
+    record ipv6-config {
+        region: option<region>
+    }
+
+    variant ip-variant {
+        ipv4(ipv4-config),
+        ipv6(ipv6-config),
+        ipv6-private, // Region config not supported
+    }
+
+    record ip-request {
+        config: ip-variant,
+    }
+
+    record ip-detail {
+        ip: ip-address,
+        ip-variant: ip-variant,
+    }
+
+    /// Allocate an IP address
+    /// Idempotency note: Retry of a success will allocate another IP address.
+    /// Upon allocating an IP the caller should use `list` and `release` to prevent this issue.
+    allocate: func(app-name: string, request: ip-request) -> result<ip-address, string>;
+
+    /// List allocated IP addresses
+    %list: func(app-name: string) -> result<list<ip-detail>, string>;
+
+    /// Release an IP address
+    release: func(app-name: string, ip: ip-address) -> result<_, string>;
+}
+
 /// [Machines API](https://docs.machines.dev/#tag/machines/get/apps/{app_name}/machines)
 interface machines {
     use regions.{region};
@@ -247,4 +288,5 @@ world exports {
     export machines;
     export secrets;
     export volumes;
+    export ips;
 }
