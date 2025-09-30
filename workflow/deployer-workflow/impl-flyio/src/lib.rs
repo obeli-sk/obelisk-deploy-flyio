@@ -185,22 +185,25 @@ fn cleanup(app_name: &str, modify_error: Option<AppInitModifyError>) -> AppInitE
     }
 }
 
+fn app_create(org_slug: &str, app_name: &str) -> Result<(), AppInitError> {
+    // Create the app
+    // If the app already exists, fail with AppNameConflict
+    if activity_fly_http::apps::get(app_name)
+        .map_err(AppInitError::AppCreateError)?
+        .is_some()
+    {
+        return Err(AppInitError::AppNameConflict);
+    }
+    // Create the app
+    activity_fly_http::apps::put(org_slug, app_name).map_err(AppInitError::AppCreateError)?;
+    Ok(())
+}
+
 impl Guest for Component {
-    fn app_init_no_cleanup_on_error(
-        org_slug: String,
+    fn app_modify_no_cleanup_on_error(
         app_name: String,
         config: ObeliskConfig,
     ) -> Result<Vec<String>, AppInitNoCleanupError> {
-        // If the app already exists, fail with AppNameConflict
-        if activity_fly_http::apps::get(&app_name)
-            .map_err(AppInitNoCleanupError::AppCreateError)?
-            .is_some()
-        {
-            return Err(AppInitNoCleanupError::AppNameConflict);
-        }
-        // Create the app
-        activity_fly_http::apps::put(&org_slug, &app_name)
-            .map_err(AppInitNoCleanupError::AppCreateError)?;
         app_modify_without_cleanup(&app_name, config)
             .map_err(AppInitNoCleanupError::AppInitModifyError)
     }
@@ -211,22 +214,13 @@ impl Guest for Component {
         config: ObeliskConfig,
         sleep_between_retries_seconds: u32,
     ) -> Result<(), AppInitError> {
+        app_create(&org_slug, &app_name)?;
         // Launch a child workflow by using import
-        let required_secrets = workflow_import::app_init_no_cleanup_on_error(
-            &org_slug, &app_name, &config,
-        )
-        .map_err(|err| match err {
-            AppInitNoCleanupError::AppCreateError(err) => {
-                // No cleanup needed, app creation failed.
-                AppInitError::AppCreateError(err)
-            }
-            AppInitNoCleanupError::AppNameConflict => {
-                // No cleanup needed, app creation failed on name conflict.
-                AppInitError::AppNameConflict
-            }
-            AppInitNoCleanupError::AppInitModifyError(err) => cleanup(&app_name, Some(err)),
-            AppInitNoCleanupError::ExecutionFailed => cleanup(&app_name, None),
-        })?;
+        let required_secrets = workflow_import::app_modify_no_cleanup_on_error(&app_name, &config)
+            .map_err(|err| match err {
+                AppInitNoCleanupError::AppInitModifyError(err) => cleanup(&app_name, Some(err)),
+                AppInitNoCleanupError::ExecutionFailed => cleanup(&app_name, None),
+            })?;
         // Sleep until all requested secrets are stored in the app.
         let required_secrets: HashSet<_> = required_secrets.into_iter().collect();
         while !required_secrets.is_empty() {

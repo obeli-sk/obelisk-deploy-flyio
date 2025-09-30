@@ -57,8 +57,6 @@ interface types {
     }
 
     variant app-init-no-cleanup-error {
-        app-name-conflict,
-        app-create-error(string),
         app-init-modify-error(app-init-modify-error),
         execution-failed,
     }
