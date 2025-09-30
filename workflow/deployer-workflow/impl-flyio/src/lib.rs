@@ -54,9 +54,7 @@ fn app_modify_without_cleanup(
     activity_fly_http::ips::allocate(
         app_name,
         IpRequest {
-            config: IpVariant::Ipv6(Ipv6Config {
-                region: Some(REGION),
-            }),
+            config: IpVariant::Ipv6(Ipv6Config { region: None }),
         },
     )
     .map_err(AppInitModifyError::IpAllocateError)?;
@@ -301,6 +299,9 @@ impl Guest for Component {
             Some(REGION),
         )
         .map_err(AppInitError::FinalVmError)?;
+
+        // TODO Add a healthcheck to the exposed server and loop until success is reached, with configurable max retries. Cleanup on failure.
+
         Ok(())
     }
 }
