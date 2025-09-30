@@ -44,19 +44,18 @@ const OBELISK_BIN_PATH: &str = "/obelisk/obelisk";
 const REGION: Region = Region::Ams;
 const WEBHOOK_PORT: u16 = 9090;
 
-fn app_modify_without_cleanup(
-    app_name: &str,
-    config: ObeliskConfig,
-) -> Result<Vec<String>, AppInitModifyError> {
-    // Allocate an IPv6 address first.
+fn allocate_ip(app_name: &str) -> Result<(), AppInitModifyError> {
     activity_fly_http::ips::allocate(
         app_name,
         IpRequest {
             config: IpVariant::Ipv6(Ipv6Config { region: None }),
         },
     )
-    .map_err(AppInitModifyError::IpAllocateError)?;
+    .map(|_ip| ())
+    .map_err(AppInitModifyError::IpAllocateError)
+}
 
+fn setup_volume(app_name: &str, config: &ObeliskConfig) -> Result<(), AppInitModifyError> {
     // Create a volume
     activity_fly_http::volumes::create(
         app_name,
@@ -124,7 +123,7 @@ fn app_modify_without_cleanup(
     }
 
     // Write obelisk.toml
-    let obelisk_toml = serialize_obelisk_toml(&config);
+    let obelisk_toml = serialize_obelisk_toml(config);
     let exec_response = activity_fly_http::machines::exec(
         app_name,
         &temp_vm,
@@ -168,11 +167,94 @@ fn app_modify_without_cleanup(
     activity_fly_http::machines::delete(app_name, &temp_vm, true)
         .map_err(AppInitModifyError::TempVmError)?;
 
-    // All OK, return secrets that are needed by the configuration.
-    Ok(get_secret_keys(config))
+    Ok(())
+}
+
+// Sleep until all requested secrets are stored in the app.
+fn wait_for_secrets(
+    app_name: &str,
+    required_secrets: HashSet<String>,
+    sleep_between_retries_seconds: u32,
+) -> Result<(), AppInitModifyError> {
+    while !required_secrets.is_empty() {
+        let actual_secrets = match activity_fly_http::secrets::list(app_name) {
+            Ok(actual_secrets) => actual_secrets
+                .into_iter()
+                .map(|secret| secret.name)
+                .collect(),
+            Err(_) => {
+                // has the app been deleted?
+                match activity_fly_http::apps::get(app_name) {
+                    Ok(None) => return Err(AppInitModifyError::AppDeleted),
+                    Ok(Some(_)) | Err(_) => HashSet::new(), // app exists or unknown, keep looping.
+                }
+            }
+        };
+        if required_secrets.is_subset(&actual_secrets) {
+            break;
+        }
+        workflow_support::sleep(ScheduleAt::In(SchedulingDuration::Seconds(
+            sleep_between_retries_seconds as u64,
+        )));
+    }
+    Ok(())
+}
+
+fn launch_final_vm(app_name: &str) -> Result<(), AppInitModifyError> {
+    activity_fly_http::machines::create(
+        app_name,
+        VM_NAME_FINAL,
+        &MachineConfig {
+            image: IMAGE.to_string(),
+            guest: Some(GuestConfig {
+                cpu_kind: Some(CpuKind::Shared),
+                cpus: Some(1),
+                memory_mb: Some(256),
+                kernel_args: None,
+            }),
+            auto_destroy: None,
+            init: Some(InitConfig {
+                cmd: Some(
+                    vec!["server", "run", "--config", "/volume/obelisk.toml"]
+                        .into_iter()
+                        .map(ToString::to_string)
+                        .collect(),
+                ),
+                entrypoint: None, // defaults to /obelisk/obelisk
+                exec: None,
+                kernel_args: None,
+                swap_size_mb: Some(256),
+                tty: None,
+            }),
+            env: None,
+            restart: Some(MachineRestart {
+                max_retries: None,
+                policy: RestartPolicy::No,
+            }),
+            stop_config: None,
+            mounts: Some(vec![Mount {
+                volume: VOLUME_NAME.to_string(),
+                path: VOLUME_MOUNT_PATH.to_string(),
+            }]),
+            services: Some(vec![ServiceConfig {
+                internal_port: WEBHOOK_PORT,
+                protocol: ServiceProtocol::Tcp,
+                ports: vec![PortConfig {
+                    port: 443,
+                    handlers: vec![PortHandler::Tls],
+                }],
+            }]),
+        },
+        Some(REGION),
+    )
+    .map(|_| ())
+    .map_err(AppInitModifyError::FinalVmError)
 }
 
 fn cleanup(app_name: &str, modify_error: AppInitModifyError) -> AppInitError {
+    if matches!(modify_error, AppInitModifyError::AppDeleted) {
+        return AppInitError::CleanupOk;
+    }
     // Delete the app with force.
     match activity_fly_http::apps::delete(app_name, true) {
         Ok(()) => AppInitError::CleanupOk,
@@ -201,8 +283,19 @@ impl Guest for Component {
     fn app_modify_no_cleanup_on_error(
         app_name: String,
         config: ObeliskConfig,
-    ) -> Result<Vec<String>, AppInitModifyError> {
-        app_modify_without_cleanup(&app_name, config)
+        sleep_between_retries_seconds: u32,
+    ) -> Result<(), AppInitModifyError> {
+        // Allocate an IPv6 address first.
+        allocate_ip(&app_name)?;
+        // Put `obelisk.toml`, downloaded WASM files and codegen cache on a new volume.
+        setup_volume(&app_name, &config)?;
+        // Sleep until all requested secrets are stored in the app.
+        let required_secrets = get_secret_keys(config);
+        wait_for_secrets(&app_name, required_secrets, sleep_between_retries_seconds)?;
+        // All preparation is done, start the final VM.
+        launch_final_vm(&app_name)?;
+        // TODO Add a healthcheck to the exposed server and loop until success is reached, with configurable max retries. Cleanup on failure.
+        Ok(())
     }
 
     fn app_init(
@@ -212,89 +305,18 @@ impl Guest for Component {
         sleep_between_retries_seconds: u32,
     ) -> Result<(), AppInitError> {
         app_create(&org_slug, &app_name)?;
-        // Launch a child workflow by using import
-        let required_secrets = workflow_import::app_modify_no_cleanup_on_error(&app_name, &config)
-            .map_err(|err| cleanup(&app_name, err))?;
-        // Sleep until all requested secrets are stored in the app.
-        let required_secrets: HashSet<_> = required_secrets.into_iter().collect();
-        while !required_secrets.is_empty() {
-            let actual_secrets = match activity_fly_http::secrets::list(&app_name) {
-                Ok(actual_secrets) => actual_secrets
-                    .into_iter()
-                    .map(|secret| secret.name)
-                    .collect(),
-                Err(_) => {
-                    // has the app been deleted?
-                    match activity_fly_http::apps::get(&app_name) {
-                        Ok(None) => return Err(AppInitError::AppDeleted),
-                        Ok(Some(_)) | Err(_) => HashSet::new(), // app exists or unknown, keep looping.
-                    }
-                }
-            };
-            if required_secrets.is_subset(&actual_secrets) {
-                break;
-            }
-            workflow_support::sleep(ScheduleAt::In(SchedulingDuration::Seconds(
-                sleep_between_retries_seconds as u64,
-            )));
-        }
-
-        // Launch the final VM
-        activity_fly_http::machines::create(
+        // Launch a child workflow by using import.
+        // In case of any error including a trap (panic), delete the whole app.
+        workflow_import::app_modify_no_cleanup_on_error(
             &app_name,
-            VM_NAME_FINAL,
-            &MachineConfig {
-                image: IMAGE.to_string(),
-                guest: Some(GuestConfig {
-                    cpu_kind: Some(CpuKind::Shared),
-                    cpus: Some(1),
-                    memory_mb: Some(256),
-                    kernel_args: None,
-                }),
-                auto_destroy: None,
-                init: Some(InitConfig {
-                    cmd: Some(
-                        vec!["server", "run", "--config", "/volume/obelisk.toml"]
-                            .into_iter()
-                            .map(ToString::to_string)
-                            .collect(),
-                    ),
-                    entrypoint: None, // defaults to /obelisk/obelisk
-                    exec: None,
-                    kernel_args: None,
-                    swap_size_mb: Some(256),
-                    tty: None,
-                }),
-                env: None,
-                restart: Some(MachineRestart {
-                    max_retries: None,
-                    policy: RestartPolicy::No,
-                }),
-                stop_config: None,
-                mounts: Some(vec![Mount {
-                    volume: VOLUME_NAME.to_string(),
-                    path: VOLUME_MOUNT_PATH.to_string(),
-                }]),
-                services: Some(vec![ServiceConfig {
-                    internal_port: WEBHOOK_PORT,
-                    protocol: ServiceProtocol::Tcp,
-                    ports: vec![PortConfig {
-                        port: 443,
-                        handlers: vec![PortHandler::Tls],
-                    }],
-                }]),
-            },
-            Some(REGION),
+            &config,
+            sleep_between_retries_seconds,
         )
-        .map_err(AppInitError::FinalVmError)?;
-
-        // TODO Add a healthcheck to the exposed server and loop until success is reached, with configurable max retries. Cleanup on failure.
-
-        Ok(())
+        .map_err(|err| cleanup(&app_name, err))
     }
 }
 
-fn get_secret_keys(config: ObeliskConfig) -> Vec<String> {
+fn get_secret_keys(config: ObeliskConfig) -> HashSet<String> {
     let a_iter = config
         .activity_wasm_list
         .into_iter()
@@ -309,8 +331,7 @@ fn get_secret_keys(config: ObeliskConfig) -> Vec<String> {
         .flat_map(|component| component.env_vars)
         .flatten()
         .filter(|env_var| !env_var.contains("="));
-    let unique_keys: hashbrown::HashSet<_> = a_iter.chain(w_iter).collect();
-    unique_keys.into_iter().collect()
+    a_iter.chain(w_iter).collect()
 }
 
 // FIXME: Insecure, use proper TOML serializer.

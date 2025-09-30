@@ -44,8 +44,12 @@ interface types {
         temp-vm-error(string),
         /// Cannot place files on the volume.
         volume-write-error(string),
-        /// Error running `obelisk server verify -i`
+        /// Error running `obelisk server verify --ignore-missing-env-vars`
         verify-error(string),
+        /// Waiting for secrets was interrupted by deleting the app.
+        app-deleted,
+        /// Cannot start the final VM
+        final-vm-error(string),
         /// Trap (panic) during execution
         execution-failed,
     }
@@ -65,10 +69,7 @@ interface types {
         /// App init failed, cleanup failed.
         /// The associated value contains the reason of failure, if available.
         cleanup-failed(app-cleanup-failed),
-        /// Wait for secrets can be interrupted by deleting the app.
-        app-deleted,
-        /// Cannot start the final VM
-        final-vm-error(string),
+
         execution-failed,
     }
 }

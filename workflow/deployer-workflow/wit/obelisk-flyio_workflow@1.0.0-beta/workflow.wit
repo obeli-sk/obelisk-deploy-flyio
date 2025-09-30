@@ -4,16 +4,13 @@ interface workflow {
     use types.{obelisk-config, app-init-modify-error, app-init-error};
 
     /// Allocate an IP address.
-    /// Create a volume.
-    /// Launch a temporary VM.
-    /// Store the config file on the volume.
-    /// Execute `obelisk server verify --ignore-missing-env-vars` to download and verify WASM components.
-    /// Shutdown and delete the temporary VM.
-    /// Return list of secret keys the config requires.
+    /// Create and prepare a volume.
+    /// Wait until secrets are populated.
     app-modify-no-cleanup-on-error: func(
         app-name: string,
         config: obelisk-config,
-        ) -> result<list<string>, app-init-modify-error>;
+        sleep-between-retries-seconds: u32,
+        ) -> result<_, app-init-modify-error>;
 
     /// Chcek whether the app_name exists. If it does, return app-name-conflict.
     /// Create a fly app.
