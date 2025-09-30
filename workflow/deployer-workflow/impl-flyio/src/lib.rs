@@ -24,7 +24,6 @@ use generated::{
             types::{AppCleanupFailed, AppInitModifyError},
             workflow::{
                 self as workflow_import, AppInitError, AppInitNoCleanupError, ObeliskConfig,
-                ServeError,
             },
         },
     },
@@ -35,7 +34,8 @@ struct Component;
 export!(Component with_types_in generated);
 
 const VOLUME_NAME: &str = "db";
-const TEMP_VM_NAME: &str = "temp";
+const VM_NAME_TEMP: &str = "temp";
+const VM_NAME_FINAL: &str = "obelisk";
 const SLEEP: &str = "/usr/bin/sleep";
 const INFINITY: &str = "infinity";
 const VOLUME_MOUNT_PATH: &str = "/volume";
@@ -49,7 +49,7 @@ fn app_modify_without_cleanup(
     config: ObeliskConfig,
 ) -> Result<Vec<String>, AppInitModifyError> {
     // Create a volume
-    let volume = activity_fly_http::volumes::create(
+    activity_fly_http::volumes::create(
         app_name,
         &VolumeCreateRequest {
             name: VOLUME_NAME.to_string(),
@@ -62,7 +62,7 @@ fn app_modify_without_cleanup(
     // Launch a temporary VM
     let temp_vm = activity_fly_http::machines::create(
         app_name,
-        TEMP_VM_NAME,
+        VM_NAME_TEMP,
         &MachineConfig {
             image: IMAGE.to_string(),
             guest: Some(GuestConfig {
@@ -77,7 +77,7 @@ fn app_modify_without_cleanup(
                 entrypoint: Some(vec![SLEEP.to_string()]),
                 exec: None,
                 kernel_args: None,
-                swap_size_mb: None,
+                swap_size_mb: Some(256),
                 tty: None,
             }),
             env: None,
@@ -87,7 +87,7 @@ fn app_modify_without_cleanup(
             }),
             stop_config: None,
             mounts: Some(vec![Mount {
-                volume: volume.id.clone(),
+                volume: VOLUME_NAME.to_string(),
                 path: VOLUME_MOUNT_PATH.to_string(),
             }]),
             services: None,
@@ -215,6 +215,7 @@ impl Guest for Component {
             AppInitNoCleanupError::AppInitModifyError(err) => cleanup(&app_name, Some(err)),
             AppInitNoCleanupError::ExecutionFailed => cleanup(&app_name, None),
         })?;
+        // Sleep until all requested secrets are stored in the app.
         let required_secrets: HashSet<_> = required_secrets.into_iter().collect();
         while !required_secrets.is_empty() {
             let actual_secrets = match activity_fly_http::secrets::list(&app_name) {
@@ -237,14 +238,49 @@ impl Guest for Component {
                 sleep_between_retries_seconds as u64,
             )));
         }
+        // TODO: Port forwarding
+        // Launch the final VM
+        activity_fly_http::machines::create(
+            &app_name,
+            VM_NAME_FINAL,
+            &MachineConfig {
+                image: IMAGE.to_string(),
+                guest: Some(GuestConfig {
+                    cpu_kind: Some(CpuKind::Shared),
+                    cpus: Some(1),
+                    memory_mb: Some(256),
+                    kernel_args: None,
+                }),
+                auto_destroy: None,
+                init: Some(InitConfig {
+                    cmd: Some(
+                        vec!["server", "run", "--config", "/volume/obelisk.toml"]
+                            .into_iter()
+                            .map(ToString::to_string)
+                            .collect(),
+                    ),
+                    entrypoint: None, // defaults to /obelisk/obelisk
+                    exec: None,
+                    kernel_args: None,
+                    swap_size_mb: Some(256),
+                    tty: None,
+                }),
+                env: None,
+                restart: Some(MachineRestart {
+                    max_retries: None,
+                    policy: RestartPolicy::No,
+                }),
+                stop_config: None,
+                mounts: Some(vec![Mount {
+                    volume: VOLUME_NAME.to_string(),
+                    path: VOLUME_MOUNT_PATH.to_string(),
+                }]),
+                services: None,
+            },
+            Some(REGION),
+        )
+        .map_err(AppInitError::FinalVmError)?;
         Ok(())
-    }
-
-    fn serve(_app_name: String) -> Result<(), ServeError> {
-        // Make sure no VM is running and a single volume is present.
-        // Run `obelisk server verify` in a temporary VM.
-        // Start the final VM.
-        todo!()
     }
 }
 

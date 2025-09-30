@@ -9,9 +9,11 @@ obelisk client execution submit -f obelisk-flyio:workflow/workflow@1.0.0-beta.ap
 "$(./scripts/json-app-init-stargazers.sh)"
 ```
 
-In another terminal push secrets from stargazers' `.envrc` file into the fly.io app.
+While the workflow is running, push the stargazers secrets to the fly.io app -
+either using `fly` command, fly.io's dashboard or using following script:
+Point the script at stargazers' `.envrc` file.
 ```sh
-./scripts/secrets-send.sh .envrc
+./scripts/secrets-send.sh ../stargazers/.envrc
 ```
 
 When all required secrets are present, the `app-init` workflow finishes.

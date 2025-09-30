@@ -71,13 +71,8 @@ interface types {
         cleanup-failed(app-cleanup-failed),
         /// Wait for secrets can be interrupted by deleting the app.
         app-deleted,
+        /// Cannot start the final VM
+        final-vm-error(string),
         execution-failed,
     }
-
-    variant serve-error {
-        vm-start-error(string),
-        healthcheck-error(string),
-        execution-failed,
-    }
-
 }

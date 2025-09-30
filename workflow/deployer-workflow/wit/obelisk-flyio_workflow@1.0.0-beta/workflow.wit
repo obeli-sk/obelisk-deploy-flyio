@@ -1,7 +1,7 @@
 package obelisk-flyio:workflow@1.0.0-beta;
 
 interface workflow {
-    use types.{obelisk-config, app-init-no-cleanup-error, app-init-error, serve-error};
+    use types.{obelisk-config, app-init-no-cleanup-error, app-init-error};
 
     /// Chcek whether the app_name exists. If it does, return app-name-conflict.
     /// Create a fly app.
@@ -30,9 +30,6 @@ interface workflow {
         config: obelisk-config,
         sleep-between-retries-seconds: u32,
         ) -> result<_, app-init-error>;
-
-    /// Serve Obelisk app on a VM.
-    serve: func(app-name: string) -> result<_, serve-error>;
 }
 
 world exports {
