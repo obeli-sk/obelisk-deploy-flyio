@@ -44,6 +44,7 @@ const OBELISK_TOML_PATH: &str = formatcp!("{VOLUME_MOUNT_PATH}/obelisk.toml");
 const OBELISK_BIN_PATH: &str = "/obelisk/obelisk";
 const REGION: Region = Region::Ams;
 const WEBHOOK_PORT: u16 = 9090;
+const DEPLOYED_HEALTHCHECK_PATH: &str = "/obeliskhealthcheck";
 
 fn allocate_ip(app_name: &str) -> Result<(), AppInitModifyError> {
     activity_fly_http::ips::allocate(
@@ -308,9 +309,10 @@ impl Guest for Component {
         // All preparation is done, start the final VM.
         launch_final_vm(&app_name)?;
 
-        // TODO Add /obeliskhealthcheck to the exposed server.
         for _ in 0..max_healthcheck_attempts {
-            match http_get::get_resp(&format!("https://{app_name}.fly.dev")) {
+            match http_get::get_resp(&format!(
+                "https://{app_name}.fly.dev{DEPLOYED_HEALTHCHECK_PATH}"
+            )) {
                 Ok(http_get::Response {
                     status_code,
                     body: _,
@@ -382,6 +384,12 @@ sqlite.pragma = {{ "cache_size" = "3000" }}
 [log.stdout]
 enabled = true
 level = "WARN,obelisk=info"
+
+[[webhook_endpoint]]
+name = "webhook_healthcheck"
+location.oci = "docker.io/getobelisk/components_flyio_webhook_healthcheck:2025-10-01@sha256:6fbc11b80b441ae6e642327b1ec0ceba85b2868d85dbce2d99d0d7b14a525c8c"
+http_server = "{WEBHOOK_SERVER_NAME}"
+routes = ["{DEPLOYED_HEALTHCHECK_PATH}"]
 
 [[http_server]]
 name = "{WEBHOOK_SERVER_NAME}"
