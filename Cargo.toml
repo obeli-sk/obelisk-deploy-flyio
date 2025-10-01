@@ -27,7 +27,14 @@ wit-bindgen-rust = "0.46.0"
 wit-parser = "0.239.0"
 wstd = "0.5.6"
 
-
 [profile.release]
-opt-level = "s"
+opt-level = "z"
+lto = true
+
+[profile.release_webhook]
+inherits = "release"
+strip = "debuginfo"
+
+[profile.release_workflow]
+inherits = "release"
 debug = "line-tables-only"

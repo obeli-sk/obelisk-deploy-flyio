@@ -28,8 +28,8 @@ forward_stdout = "stderr"
 forward_stderr = "stderr"
 
 [[workflow]]
-name = "deployer_flyio"
-location.path = "${OBELISK_TOML_DIR}/target/wasm32-unknown-unknown/release/obelisk_deployer_flyio.wasm"
+name = "obelisk_deployer_flyio"
+location.path = "${OBELISK_TOML_DIR}/target/wasm32-unknown-unknown/release_workflow/obelisk_deployer_flyio.wasm"
 backtrace.sources = { "${OBELISK_TOML_DIR}/workflow/deployer-workflow/impl-flyio/src/lib.rs" = "${OBELISK_TOML_DIR}/workflow/deployer-workflow/impl-flyio/src/lib.rs" }
 
 [[http_server]]
