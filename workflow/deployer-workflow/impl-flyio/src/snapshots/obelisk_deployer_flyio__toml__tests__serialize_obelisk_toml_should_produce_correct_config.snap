@@ -39,11 +39,11 @@ oci = "docker.io/getobelisk/demo_stargazers_activity_db_turso:2025-09-28@sha256:
 listening_addr = "[::]:5005"
 
 [[http_server]]
-listening_addr = "0.0.0.0:8081"
+listening_addr = "0.0.0.0:9091"
 name = "healthcheck_server"
 
 [[http_server]]
-listening_addr = "0.0.0.0:8082"
+listening_addr = "0.0.0.0:9090"
 name = "webhook_server"
 
 [log.stdout]
@@ -51,20 +51,20 @@ enabled = true
 level = "WARN,obelisk=info"
 
 [sqlite]
-directory = "/var/obelisk/obelisk-sqlite"
+directory = "/volume/obelisk-sqlite"
 
 [sqlite.pragma]
 cache_size = "3000"
 
 [wasm]
-cache_directory = "/var/obelisk/wasm"
+cache_directory = "/volume/wasm"
 parallel_compilation = false
 
 [wasm.backtrace]
 persist = false
 
 [wasm.codegen_cache]
-directory = "/var/obeliskolume/codegen"
+directory = "/volumeolume/codegen"
 
 [[webhook_endpoint]]
 http_server = "healthcheck_server"

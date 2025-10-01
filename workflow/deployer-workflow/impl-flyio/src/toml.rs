@@ -1,13 +1,10 @@
 use crate::generated::obelisk_flyio::workflow::types::ObeliskConfig;
+use crate::{HEALTHCHECK_INTERNAL_PORT, VOLUME_MOUNT_PATH, WEBHOOK_INTERNAL_PORT};
 use anyhow::anyhow;
 use toml::Table; // Explicitly import Table
 pub(crate) fn serialize_obelisk_toml(config: &ObeliskConfig) -> Result<String, anyhow::Error> {
-    const VOLUME_MOUNT_PATH: &str = "/var/obelisk";
-    const HEALTHCHECK_INTERNAL_PORT: u16 = 8081;
-    const WEBHOOK_INTERNAL_PORT: u16 = 8082;
-
-    const WEBHOOK_SERVER_NAME: &str = "webhook_server";
     const HEALTHCHECK_SERVER_NAME: &str = "healthcheck_server";
+    const WEBHOOK_SERVER_NAME: &str = "webhook_server";
 
     let initial_toml_template = format!(
         r#"
