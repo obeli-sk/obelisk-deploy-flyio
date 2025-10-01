@@ -1,7 +1,6 @@
 use crate::generated::obelisk_flyio::workflow::types::ObeliskConfig;
 use anyhow::anyhow;
 use toml::Table; // Explicitly import Table
-
 pub(crate) fn serialize_obelisk_toml(config: &ObeliskConfig) -> Result<String, anyhow::Error> {
     const VOLUME_MOUNT_PATH: &str = "/var/obelisk";
     const HEALTHCHECK_INTERNAL_PORT: u16 = 8081;
@@ -45,12 +44,10 @@ listening_addr = "0.0.0.0:{WEBHOOK_INTERNAL_PORT}"
 "#
     );
 
-    // Parse the initial TOML string into a toml::Table
     let mut root_table = initial_toml_template
         .parse::<Table>()
         .map_err(|e| anyhow!("Failed to parse static TOML: {}", e))?;
 
-    // Helper to get or create an array of tables
     fn get_or_create_array_of_tables<'a>(
         table: &'a mut Table,
         key: &str,
@@ -59,23 +56,25 @@ listening_addr = "0.0.0.0:{WEBHOOK_INTERNAL_PORT}"
             .entry(key)
             .or_insert_with(|| toml::Value::Array(Vec::new()))
             .as_array_mut()
-            .unwrap_or_else(|| panic!("Expected '{key}' to be an array of tables"))
+            .expect(&format!("Expected '{}' to be an array of tables", key))
     }
 
     // Add activity_wasm
     if let Some(activities) = &config.activity_wasm_list {
         let activity_array = get_or_create_array_of_tables(&mut root_table, "activity_wasm");
         for activity in activities {
-            let mut activity_table = Table::new(); // Use Table directly
+            let mut activity_table = Table::new();
             activity_table.insert(
                 "name".to_string(),
                 toml::Value::String(activity.name.clone()),
             );
-            // Insert "location.oci" as a single dotted key
-            activity_table.insert(
-                "location.oci".to_string(),
+
+            let mut location_table = Table::new();
+            location_table.insert(
+                "oci".to_string(),
                 toml::Value::String(activity.location_oci.clone()),
             );
+            activity_table.insert("location".to_string(), toml::Value::Table(location_table));
 
             if let Some(env_vars) = &activity.env_vars {
                 activity_table.insert(
@@ -89,11 +88,17 @@ listening_addr = "0.0.0.0:{WEBHOOK_INTERNAL_PORT}"
                 );
             }
             if let Some(lock_expiry) = activity.lock_expiry_seconds {
-                // Insert "exec.lock_expiry.seconds" as a single dotted key
-                activity_table.insert(
-                    "exec.lock_expiry.seconds".to_string(),
+                let mut exec_table = Table::new();
+                let mut lock_expiry_table = Table::new();
+                lock_expiry_table.insert(
+                    "seconds".to_string(),
                     toml::Value::Integer(lock_expiry as i64),
                 );
+                exec_table.insert(
+                    "lock_expiry".to_string(),
+                    toml::Value::Table(lock_expiry_table),
+                );
+                activity_table.insert("exec".to_string(), toml::Value::Table(exec_table));
             }
             activity_array.push(toml::Value::Table(activity_table));
         }
@@ -108,11 +113,14 @@ listening_addr = "0.0.0.0:{WEBHOOK_INTERNAL_PORT}"
                 "name".to_string(),
                 toml::Value::String(workflow.name.clone()),
             );
-            // Insert "location.oci" as a single dotted key
-            workflow_table.insert(
-                "location.oci".to_string(),
+
+            let mut location_table = Table::new();
+            location_table.insert(
+                "oci".to_string(),
                 toml::Value::String(workflow.location_oci.clone()),
             );
+            workflow_table.insert("location".to_string(), toml::Value::Table(location_table));
+
             workflow_array.push(toml::Value::Table(workflow_table));
         }
     }
@@ -126,11 +134,14 @@ listening_addr = "0.0.0.0:{WEBHOOK_INTERNAL_PORT}"
                 "name".to_string(),
                 toml::Value::String(webhook.name.clone()),
             );
-            // Insert "location.oci" as a single dotted key
-            webhook_table.insert(
-                "location.oci".to_string(),
+
+            let mut location_table = Table::new();
+            location_table.insert(
+                "oci".to_string(),
                 toml::Value::String(webhook.location_oci.clone()),
             );
+            webhook_table.insert("location".to_string(), toml::Value::Table(location_table));
+
             webhook_table.insert(
                 "http_server".to_string(),
                 toml::Value::String(WEBHOOK_SERVER_NAME.to_string()),
@@ -173,7 +184,7 @@ listening_addr = "0.0.0.0:{WEBHOOK_INTERNAL_PORT}"
         }
     }
 
-    Ok(toml::to_string(&toml::Value::Table(root_table))?)
+    Ok(toml::to_string_pretty(&toml::Value::Table(root_table))?)
 }
 
 #[cfg(test)]
