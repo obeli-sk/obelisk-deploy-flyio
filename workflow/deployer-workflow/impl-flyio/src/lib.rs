@@ -60,7 +60,7 @@ fn allocate_ip(app_name: &str) -> Result<(), AppInitModifyError> {
     .map_err(AppInitModifyError::IpAllocateError)
 }
 
-fn setup_volume(app_name: &str, config: &ObeliskConfig) -> Result<(), AppInitModifyError> {
+fn setup_volume(app_name: &str, obelisk_toml: &str) -> Result<(), AppInitModifyError> {
     // Create a volume
     activity_fly_http::volumes::create(
         app_name,
@@ -128,7 +128,6 @@ fn setup_volume(app_name: &str, config: &ObeliskConfig) -> Result<(), AppInitMod
     }
 
     // Write obelisk.toml
-    let obelisk_toml = serialize_obelisk_toml(config).unwrap(); // A panic is translated to `app-init-modify-error::execution-failed`
     let exec_response = activity_fly_http::machines::exec(
         app_name,
         &temp_vm,
@@ -327,11 +326,12 @@ impl Guest for Component {
         wait_for_secrets_sleep_between_retries_seconds: u32,
         max_healthcheck_attempts: u32,
     ) -> Result<(), AppInitModifyError> {
+        let obelisk_toml = serialize_obelisk_toml(&config).unwrap(); // A panic is translated to `app-init-modify-error::execution-failed`
         app_create(&org_slug, &app_name)?;
         // Allocate an IPv6 address first.
         allocate_ip(&app_name)?;
         // Put `obelisk.toml`, downloaded WASM files and codegen cache on a new volume.
-        setup_volume(&app_name, &config)?;
+        setup_volume(&app_name, &obelisk_toml)?;
         // Sleep until all requested secrets are stored in the app.
         let required_secrets = get_secret_keys(config);
         wait_for_secrets(
