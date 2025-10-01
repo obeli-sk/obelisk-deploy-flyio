@@ -274,7 +274,7 @@ fn launch_final_vm(app_name: &str) -> Result<(), AppInitModifyError> {
     .map_err(AppInitModifyError::FinalVmError)
 }
 
-/// Sleep until the health check passes, observing `health_check_deadline_secs`, or the app is deleted.
+/// Sleep until the health check passes, observing the deadline, or the app is deleted.
 fn check_health(app_name: &str, health_check_deadline_secs: u16) -> Result<(), AppInitModifyError> {
     let start_secs = workflow_support::sleep(ScheduleAt::Now).seconds;
     loop {
@@ -335,24 +335,37 @@ fn app_create(org_slug: &str, app_name: &str) -> Result<(), AppInitModifyError> 
 }
 
 impl Guest for Component {
-    fn app_init_no_cleanup(
+    fn prepare(
         org_slug: String,
         app_name: String,
         config: ObeliskConfig,
-        health_check_deadline_secs: u16,
     ) -> Result<(), AppInitModifyError> {
-        let obelisk_toml = serialize_obelisk_toml(&config).unwrap(); // A panic is translated to `app-init-modify-error::execution-failed`
+        // Check that we can serialize the configuration first.
+        // A panic is translated to `app-init-modify-error::execution-failed`
+        let obelisk_toml = serialize_obelisk_toml(&config).unwrap();
         app_create(&org_slug, &app_name)?;
         // Allocate an IPv6 address first.
         allocate_ip(&app_name)?;
         // Put `obelisk.toml`, downloaded WASM files and codegen cache on a new volume.
         setup_volume(&app_name, &obelisk_toml)?;
-        // Sleep until all requested secrets are stored in the app.
+        Ok(())
+    }
+
+    fn wait_for_secrets(app_name: String, config: ObeliskConfig) -> Result<(), AppInitModifyError> {
         let required_secrets = get_secret_keys(config);
         wait_for_secrets(&app_name, required_secrets)?;
-        // All preparation is done, start the final VM.
+        Ok(())
+    }
+
+    fn start_final_vm(app_name: String) -> Result<(), AppInitModifyError> {
         launch_final_vm(&app_name)?;
-        // Make sure it is up.
+        Ok(())
+    }
+
+    fn wait_for_health_check(
+        app_name: String,
+        health_check_deadline_secs: u16,
+    ) -> Result<(), AppInitModifyError> {
         check_health(&app_name, health_check_deadline_secs)?;
         Ok(())
     }
@@ -363,16 +376,20 @@ impl Guest for Component {
         config: ObeliskConfig,
         health_check_deadline_secs: u16,
     ) -> Result<(), AppInitError> {
-        // TODO: Split to several child workflows: prepare, wait for secrets, finish
-        // Launch a child workflow by using import.
+        // Launch sub-workflows by using import.
         // In case of any error including a trap (panic), delete the whole app.
-        workflow_import::app_init_no_cleanup(
-            &org_slug,
-            &app_name,
-            &config,
-            health_check_deadline_secs,
-        )
-        .map_err(|err| cleanup(&app_name, err))
+        workflow_import::prepare(&org_slug, &app_name, &config)
+            .map_err(|err| cleanup(&app_name, err))?;
+
+        workflow_import::wait_for_secrets(&app_name, &config)
+            .map_err(|err| cleanup(&app_name, err))?;
+
+        workflow_import::start_final_vm(&app_name).map_err(|err| cleanup(&app_name, err))?;
+
+        workflow_import::wait_for_health_check(&app_name, health_check_deadline_secs)
+            .map_err(|err| cleanup(&app_name, err))?;
+
+        Ok(())
     }
 }
 

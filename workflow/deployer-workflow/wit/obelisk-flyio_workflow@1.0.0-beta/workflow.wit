@@ -6,17 +6,31 @@ interface workflow {
     /// Create the Fly.io app.
     /// Allocate an IP address.
     /// Create and prepare a volume.
-    /// Wait until secrets are populated.
-    /// Start the final VM.
-    app-init-no-cleanup: func(
+    prepare: func(
         org-slug: string,
         app-name: string,
         config: obelisk-config,
+        ) -> result<_, app-init-modify-error>;
+
+    /// Wait until secrets are populated or app is deleted.
+    wait-for-secrets: func(
+        app-name: string,
+        config: obelisk-config,
+        ) -> result<_, app-init-modify-error>;
+
+    /// Start the final VM.
+    start-final-vm: func(
+        app-name: string,
+        ) -> result<_, app-init-modify-error>;
+
+    /// Wait until health check passes, observing the deadline, or app is deleted.
+    wait-for-health-check: func(
+        app-name: string,
         health-check-deadline-secs: u16,
         ) -> result<_, app-init-modify-error>;
 
-    /// Wraps `app-init-no-cleanup` with a cleanup routine.
-    /// If an error occurs during app configuration
+    /// Deploys a new app with a cleanup routine.
+    /// If an error occurs during app configuration,
     /// the app is deleted, leaving the state as it was before this function was called.
     /// If the cleanup fails as well `cleanup-error` is raised.
     app-init: func(
