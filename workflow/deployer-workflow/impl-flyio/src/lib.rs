@@ -26,6 +26,7 @@ use generated::{
             workflow::{self as workflow_import, AppInitError, ObeliskConfig},
         },
     },
+    testing::http::http_get,
 };
 use hashbrown::HashSet;
 
@@ -290,6 +291,7 @@ impl Guest for Component {
         app_name: String,
         config: ObeliskConfig,
         sleep_between_retries_seconds: u32,
+        max_healthcheck_attempts: u32,
     ) -> Result<(), AppInitModifyError> {
         app_create(&org_slug, &app_name)?;
         // Allocate an IPv6 address first.
@@ -301,7 +303,20 @@ impl Guest for Component {
         wait_for_secrets(&app_name, required_secrets, sleep_between_retries_seconds)?;
         // All preparation is done, start the final VM.
         launch_final_vm(&app_name)?;
-        // TODO Add a healthcheck to the exposed server and loop until success is reached, with configurable max retries. Cleanup on failure.
+
+        // TODO Add /obeliskhealthcheck to the exposed server.
+        for _ in 0..max_healthcheck_attempts {
+            match http_get::get_resp(&format!("https://{app_name}.fly.dev")) {
+                Ok(http_get::Response {
+                    status_code,
+                    body: _,
+                }) if status_code >= 200 && status_code < 300 => {
+                    break;
+                }
+                _ => {}
+            }
+            // No sleep between retries here:
+        }
         Ok(())
     }
 
@@ -310,6 +325,7 @@ impl Guest for Component {
         app_name: String,
         config: ObeliskConfig,
         sleep_between_retries_seconds: u32,
+        max_healthcheck_attempts: u32,
     ) -> Result<(), AppInitError> {
         // Launch a child workflow by using import.
         // In case of any error including a trap (panic), delete the whole app.
@@ -318,6 +334,7 @@ impl Guest for Component {
             &app_name,
             &config,
             sleep_between_retries_seconds,
+            max_healthcheck_attempts,
         )
         .map_err(|err| cleanup(&app_name, err))
     }

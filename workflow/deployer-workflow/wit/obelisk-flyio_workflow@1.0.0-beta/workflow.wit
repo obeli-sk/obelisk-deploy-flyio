@@ -13,6 +13,7 @@ interface workflow {
         app-name: string,
         config: obelisk-config,
         sleep-between-retries-seconds: u32,
+        max-healthcheck-attempts: u32,
         ) -> result<_, app-init-modify-error>;
 
     /// Wraps `app-init-no-cleanup` with a cleanup routine.
@@ -24,6 +25,7 @@ interface workflow {
         app-name: string,
         config: obelisk-config,
         sleep-between-retries-seconds: u32,
+        max-healthcheck-attempts: u32,
         ) -> result<_, app-init-error>;
 }
 

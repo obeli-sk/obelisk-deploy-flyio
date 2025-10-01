@@ -13,5 +13,7 @@ world any {
     import obelisk-flyio:activity-fly-http/volumes@1.0.0-beta;
     import obelisk-flyio:activity-fly-http/secrets@1.0.0-beta;
 
+    import testing:http/http-get;
+
     import obelisk:workflow/workflow-support@3.0.0;
 }
