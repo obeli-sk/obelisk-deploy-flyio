@@ -319,7 +319,7 @@ impl Guest for Component {
                 }
                 _ => {}
             }
-            // No sleep between retries here:
+            workflow_support::sleep(ScheduleAt::In(SchedulingDuration::Seconds(1)));
         }
         Ok(())
     }
