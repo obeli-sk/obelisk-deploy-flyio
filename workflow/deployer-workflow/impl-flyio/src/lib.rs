@@ -48,6 +48,7 @@ const WEBHOOK_INTERNAL_PORT: u16 = 9090;
 const HEALTHCHECK_INTERNAL_PORT: u16 = 9091;
 const HEALTHCHECK_EXTERNAL_PORT: u16 = 444;
 const SLEEP_BETWEEN_RETRIES: Duration = Duration::from_secs(10);
+const SLEEP_AFTER_TEMP_VM_SHUTDOWN: Duration = Duration::from_secs(5);
 
 fn allocate_ip(app_name: &str) -> Result<(), AppInitModifyError> {
     activity_fly_http::ips::allocate(
@@ -169,7 +170,7 @@ fn setup_volume(app_name: &str, obelisk_toml: &str) -> Result<(), AppInitModifyE
     let _ = activity_fly_http::machines::stop(app_name, &temp_vm);
     // Wait a bit for clean shutdown
     workflow_support::sleep(ScheduleAt::In(SchedulingDuration::Seconds(
-        SLEEP_BETWEEN_RETRIES.as_secs(),
+        SLEEP_AFTER_TEMP_VM_SHUTDOWN.as_secs(),
     )));
     // Destroy the VM with force.
     activity_fly_http::machines::delete(app_name, &temp_vm, true)
