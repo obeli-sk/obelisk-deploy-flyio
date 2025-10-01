@@ -8,7 +8,7 @@ interface types {
     record obelisk-config {
         activity-wasm-list: option<list<activity-wasm>>,
         workflow-list: option<list<workflow>>,
-        webhook-endpoint-list: option<list<webhok-endpoint>>,
+        webhook-endpoint-list: option<list<webhook-endpoint>>,
     }
 
     record activity-wasm {
@@ -23,7 +23,7 @@ interface types {
         location-oci: string,
     }
 
-    record webhok-endpoint {
+    record webhook-endpoint {
         name: string,
         location-oci: string,
         routes: list<route>,

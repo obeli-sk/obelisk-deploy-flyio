@@ -477,3 +477,63 @@ listening_addr = "0.0.0.0:{WEBHOOK_INTERNAL_PORT}"
 
     toml_string
 }
+
+#[cfg(test)]
+mod tests {
+    use insta::assert_snapshot;
+
+    use crate::{
+        generated::obelisk_flyio::workflow::types::{
+            ActivityWasm, ObeliskConfig, Route, WebhookEndpoint, Workflow,
+        },
+        serialize_obelisk_toml,
+    };
+
+    #[test]
+    fn serialize_obelisk_toml_should_produce_correct_config() {
+        let config = ObeliskConfig {
+            activity_wasm_list: Some(vec![
+                ActivityWasm {
+                    name: "stargazers_activity_llm_chatgpt".to_string(),
+                    location_oci: "docker.io/getobelisk/demo_stargazers_activity_llm_openai:2025-09-28@sha256:4b10a66c80bec625a6b0a2e8a4b5192f8a2356eca19c0a6705335771a8b8b1e8".to_string(),
+                    env_vars: Some(vec!["OPENAI_API_KEY".to_string()]),
+                    lock_expiry_seconds: Some(10),
+                },
+                ActivityWasm {
+                    name: "stargazers_activity_github_impl".to_string(),
+                    location_oci: "docker.io/getobelisk/demo_stargazers_activity_github_impl:2025-09-28@sha256:8f6fc9b1379b359e085998fa2fd7c966c450327d09770807dfba4b2f75731d72".to_string(),
+                    env_vars: Some(vec!["GITHUB_TOKEN".to_string()]),
+                    lock_expiry_seconds: Some(5),
+                },
+                ActivityWasm {
+                    name: "stargazers_activity_db_turso".to_string(),
+                    location_oci: "docker.io/getobelisk/demo_stargazers_activity_db_turso:2025-09-28@sha256:26b08b3d0c6e430944d8187a00bd9817a83ab89e11ba72d15e7533a758addf33".to_string(),
+                    env_vars: Some(vec!["TURSO_TOKEN".to_string(), "TURSO_LOCATION".to_string()]),
+                    lock_expiry_seconds: Some(5),
+                },
+            ]),
+            workflow_list: Some(vec![
+                Workflow {
+                    name: "stargazers_workflow".to_string(),
+                    location_oci: "docker.io/getobelisk/demo_stargazers_workflow:2025-09-28@sha256:678d85e3e2f89d22794fd1ffc0217bf23510e1349ee150a54d5c82cc2ef75834".to_string(),
+                },
+            ]),
+            webhook_endpoint_list: Some(vec![
+                WebhookEndpoint {
+                    name: "stargazers_webhook".to_string(),
+                    location_oci: "docker.io/getobelisk/demo_stargazers_webhook:2025-09-28@sha256:aa4dfa18d1ad7c1623163eeabb41a415ebad5296fca8f3b957987afcdb2a0f40".to_string(),
+                    routes: vec![
+                        Route {
+                            methods: vec!["POST".to_string(), "GET".to_string()],
+                            path: "".to_string(),
+                        },
+                    ],
+                    env_vars: Some(vec!["GITHUB_WEBHOOK_SECRET".to_string()]),
+                },
+            ]),
+        };
+
+        let toml = serialize_obelisk_toml(&config);
+        assert_snapshot!(toml);
+    }
+}
