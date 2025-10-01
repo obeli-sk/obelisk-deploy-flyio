@@ -176,7 +176,7 @@ fn setup_volume(app_name: &str, obelisk_toml: &str) -> Result<(), AppInitModifyE
 
 fn bail_on_app_deletion(app_name: &str) -> Result<(), AppInitModifyError> {
     match activity_fly_http::apps::get(app_name) {
-        Ok(None) => return Err(AppInitModifyError::AppDeleted),
+        Ok(None) => Err(AppInitModifyError::AppDeleted),
         _ => Ok(()),
     }
 }
