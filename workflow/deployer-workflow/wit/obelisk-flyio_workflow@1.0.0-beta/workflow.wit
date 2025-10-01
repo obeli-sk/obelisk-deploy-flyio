@@ -3,24 +3,22 @@ package obelisk-flyio:workflow@1.0.0-beta;
 interface workflow {
     use types.{obelisk-config, app-init-modify-error, app-init-error};
 
+    /// Create the Fly.io app.
     /// Allocate an IP address.
     /// Create and prepare a volume.
     /// Wait until secrets are populated.
-    app-modify-no-cleanup-on-error: func(
+    /// Start the final VM.
+    app-init-no-cleanup: func(
+        org-slug: string,
         app-name: string,
         config: obelisk-config,
         sleep-between-retries-seconds: u32,
         ) -> result<_, app-init-modify-error>;
 
-    /// Chcek whether the app_name exists. If it does, return app-name-conflict.
-    /// Create a fly app.
-    /// Call `app-modify-no-cleanup-on-error` first.
+    /// Wraps `app-init-no-cleanup` with a cleanup routine.
     /// If an error occurs during app configuration
     /// the app is deleted, leaving the state as it was before this function was called.
     /// If the cleanup fails as well `cleanup-error` is raised.
-    /// Otherwise, when `app-modify-no-cleanup-on-error` succeeded, the workflow
-    /// fetches `secrets.list` in an endless loop until all configured secrets
-    /// are present.
     app-init: func(
         org-slug: string,
         app-name: string,

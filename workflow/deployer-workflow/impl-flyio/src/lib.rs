@@ -252,8 +252,13 @@ fn launch_final_vm(app_name: &str) -> Result<(), AppInitModifyError> {
 }
 
 fn cleanup(app_name: &str, modify_error: AppInitModifyError) -> AppInitError {
-    if matches!(modify_error, AppInitModifyError::AppDeleted) {
-        return AppInitError::CleanupOk;
+    if matches!(
+        modify_error,
+        AppInitModifyError::AppNameGetError
+            | AppInitModifyError::AppNameConflict
+            | AppInitModifyError::AppDeleted
+    ) {
+        return AppInitError::CleanupNotRequired;
     }
     // Delete the app with force.
     match activity_fly_http::apps::delete(app_name, true) {
@@ -265,26 +270,28 @@ fn cleanup(app_name: &str, modify_error: AppInitModifyError) -> AppInitError {
     }
 }
 
-fn app_create(org_slug: &str, app_name: &str) -> Result<(), AppInitError> {
+fn app_create(org_slug: &str, app_name: &str) -> Result<(), AppInitModifyError> {
     // Create the app
     // If the app already exists, fail with AppNameConflict
     if activity_fly_http::apps::get(app_name)
-        .map_err(AppInitError::AppCreateError)?
+        .map_err(|_| AppInitModifyError::AppNameGetError)?
         .is_some()
     {
-        return Err(AppInitError::AppNameConflict);
+        return Err(AppInitModifyError::AppNameConflict);
     }
     // Create the app
-    activity_fly_http::apps::put(org_slug, app_name).map_err(AppInitError::AppCreateError)?;
+    activity_fly_http::apps::put(org_slug, app_name).map_err(AppInitModifyError::AppCreateError)?;
     Ok(())
 }
 
 impl Guest for Component {
-    fn app_modify_no_cleanup_on_error(
+    fn app_init_no_cleanup(
+        org_slug: String,
         app_name: String,
         config: ObeliskConfig,
         sleep_between_retries_seconds: u32,
     ) -> Result<(), AppInitModifyError> {
+        app_create(&org_slug, &app_name)?;
         // Allocate an IPv6 address first.
         allocate_ip(&app_name)?;
         // Put `obelisk.toml`, downloaded WASM files and codegen cache on a new volume.
@@ -304,10 +311,10 @@ impl Guest for Component {
         config: ObeliskConfig,
         sleep_between_retries_seconds: u32,
     ) -> Result<(), AppInitError> {
-        app_create(&org_slug, &app_name)?;
         // Launch a child workflow by using import.
         // In case of any error including a trap (panic), delete the whole app.
-        workflow_import::app_modify_no_cleanup_on_error(
+        workflow_import::app_init_no_cleanup(
+            &org_slug,
             &app_name,
             &config,
             sleep_between_retries_seconds,

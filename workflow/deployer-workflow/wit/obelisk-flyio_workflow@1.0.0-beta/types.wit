@@ -36,6 +36,12 @@ interface types {
     }
 
     variant app-init-modify-error {
+        /// Cannot check the app name, no cleanup is required.
+        app-name-get-error,
+        /// Name conflict, no cleanup is required.
+        app-name-conflict,
+        /// Unknown error while creating the app. Since this can be a timeout, the cleanup should be performed.
+        app-create-error(string),
         /// Cannot allocate an IP address
         ip-allocate-error(string),
         /// Cannot create the volume
@@ -62,8 +68,7 @@ interface types {
     }
 
     variant app-init-error {
-        app-name-conflict,
-        app-create-error(string),
+        cleanup-not-required,
         /// App init failed, cleanup was successful.
         cleanup-ok,
         /// App init failed, cleanup failed.
