@@ -56,6 +56,7 @@ interface types {
         app-deleted,
         /// Cannot start the final VM
         final-vm-error(string),
+        health-check-failed,
         /// Trap (panic) during execution
         execution-failed,
     }

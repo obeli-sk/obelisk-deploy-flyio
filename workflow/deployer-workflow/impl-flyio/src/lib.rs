@@ -266,6 +266,24 @@ fn launch_final_vm(app_name: &str) -> Result<(), AppInitModifyError> {
     .map_err(AppInitModifyError::FinalVmError)
 }
 
+fn check_health(app_name: &str, max_healthcheck_attempts: u32) -> Result<(), AppInitModifyError> {
+    for _ in 0..max_healthcheck_attempts {
+        match http_get::get_resp(&format!(
+            "https://{app_name}.fly.dev:{HEALTHCHECK_EXTERNAL_PORT}"
+        )) {
+            Ok(http_get::Response {
+                status_code,
+                body: _,
+            }) if (200..300).contains(&status_code) => {
+                return Ok(());
+            }
+            _ => {}
+        }
+        workflow_support::sleep(ScheduleAt::In(SchedulingDuration::Seconds(1)));
+    }
+    Err(AppInitModifyError::HealthCheckFailed)
+}
+
 fn cleanup(app_name: &str, modify_error: AppInitModifyError) -> AppInitError {
     if matches!(
         modify_error,
@@ -321,21 +339,8 @@ impl Guest for Component {
         )?;
         // All preparation is done, start the final VM.
         launch_final_vm(&app_name)?;
-
-        for _ in 0..max_healthcheck_attempts {
-            match http_get::get_resp(&format!(
-                "https://{app_name}.fly.dev:{HEALTHCHECK_EXTERNAL_PORT}"
-            )) {
-                Ok(http_get::Response {
-                    status_code,
-                    body: _,
-                }) if (200..300).contains(&status_code) => {
-                    break;
-                }
-                _ => {}
-            }
-            workflow_support::sleep(ScheduleAt::In(SchedulingDuration::Seconds(1)));
-        }
+        // Make sure it is up.
+        check_health(&app_name, max_healthcheck_attempts)?;
         Ok(())
     }
 
