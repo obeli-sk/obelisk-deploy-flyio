@@ -1,6 +1,6 @@
 use crate::generated::obelisk_flyio::workflow::types::ObeliskConfig;
 use crate::{HEALTHCHECK_INTERNAL_PORT, VOLUME_MOUNT_PATH, WEBHOOK_INTERNAL_PORT};
-use anyhow::anyhow;
+use anyhow::{Context, anyhow};
 use toml::Table; // Explicitly import Table
 pub(crate) fn serialize_obelisk_toml(config: &ObeliskConfig) -> Result<String, anyhow::Error> {
     const HEALTHCHECK_SERVER_NAME: &str = "healthcheck_server";
@@ -48,17 +48,17 @@ listening_addr = "0.0.0.0:{WEBHOOK_INTERNAL_PORT}"
     fn get_or_create_array_of_tables<'a>(
         table: &'a mut Table,
         key: &str,
-    ) -> &'a mut Vec<toml::Value> {
+    ) -> Result<&'a mut Vec<toml::Value>, anyhow::Error> {
         table
             .entry(key)
             .or_insert_with(|| toml::Value::Array(Vec::new()))
             .as_array_mut()
-            .expect(&format!("Expected '{}' to be an array of tables", key))
+            .with_context(|| format!("Expected '{key}' to be an array of tables"))
     }
 
     // Add activity_wasm
     if let Some(activities) = &config.activity_wasm_list {
-        let activity_array = get_or_create_array_of_tables(&mut root_table, "activity_wasm");
+        let activity_array = get_or_create_array_of_tables(&mut root_table, "activity_wasm")?;
         for activity in activities {
             let mut activity_table = Table::new();
             activity_table.insert(
@@ -103,7 +103,7 @@ listening_addr = "0.0.0.0:{WEBHOOK_INTERNAL_PORT}"
 
     // Add workflow
     if let Some(workflows) = &config.workflow_list {
-        let workflow_array = get_or_create_array_of_tables(&mut root_table, "workflow");
+        let workflow_array = get_or_create_array_of_tables(&mut root_table, "workflow")?;
         for workflow in workflows {
             let mut workflow_table = Table::new();
             workflow_table.insert(
@@ -124,7 +124,7 @@ listening_addr = "0.0.0.0:{WEBHOOK_INTERNAL_PORT}"
 
     // Add webhook_endpoint
     if let Some(webhooks) = &config.webhook_endpoint_list {
-        let webhook_array = get_or_create_array_of_tables(&mut root_table, "webhook_endpoint");
+        let webhook_array = get_or_create_array_of_tables(&mut root_table, "webhook_endpoint")?;
         for webhook in webhooks {
             let mut webhook_table = Table::new();
             webhook_table.insert(
