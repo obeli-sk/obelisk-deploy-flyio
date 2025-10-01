@@ -1,3 +1,4 @@
+mod toml;
 mod generated {
     #![allow(clippy::empty_line_after_outer_attr)]
     include!(concat!(env!("OUT_DIR"), "/generated.rs"));
@@ -29,6 +30,7 @@ use generated::{
     testing::http::http_get,
 };
 use hashbrown::HashSet;
+use toml::serialize_obelisk_toml;
 
 struct Component;
 export!(Component with_types_in generated);
@@ -126,7 +128,7 @@ fn setup_volume(app_name: &str, config: &ObeliskConfig) -> Result<(), AppInitMod
     }
 
     // Write obelisk.toml
-    let obelisk_toml = serialize_obelisk_toml(config);
+    let obelisk_toml = serialize_obelisk_toml(config).unwrap(); // A panic is translated to `app-init-modify-error::execution-failed`
     let exec_response = activity_fly_http::machines::exec(
         app_name,
         &temp_vm,
@@ -380,160 +382,4 @@ fn get_secret_keys(config: ObeliskConfig) -> HashSet<String> {
         .flatten()
         .filter(|env_var| !env_var.contains("="));
     a_iter.chain(w_iter).collect()
-}
-
-// FIXME: Insecure, use proper TOML serializer.
-fn serialize_obelisk_toml(config: &ObeliskConfig) -> String {
-    const WEBHOOK_SERVER_NAME: &str = "webhook_server";
-    const HEALTHCHECK_SERVER_NAME: &str = "healthcheck_server";
-
-    let mut toml_string = format!(
-        r#"
-sqlite.directory = "{VOLUME_MOUNT_PATH}/obelisk-sqlite"
-wasm.cache_directory = "{VOLUME_MOUNT_PATH}/wasm"
-wasm.codegen_cache.directory = "{VOLUME_MOUNT_PATH}olume/codegen"
-
-wasm.parallel_compilation = false
-wasm.backtrace.persist = false # Speed up execution
-
-api.listening_addr = "[::]:5005"
-webui.listening_addr = "[::]:8080"
-
-sqlite.pragma = {{ "cache_size" = "3000" }}
-
-[log.stdout]
-enabled = true
-level = "WARN,obelisk=info"
-
-[[http_server]]
-name = "{HEALTHCHECK_SERVER_NAME}"
-listening_addr = "0.0.0.0:{HEALTHCHECK_INTERNAL_PORT}"
-
-[[webhook_endpoint]]
-name = "webhook_healthcheck"
-location.oci = "docker.io/getobelisk/components_flyio_webhook_healthcheck:2025-10-01@sha256:6fbc11b80b441ae6e642327b1ec0ceba85b2868d85dbce2d99d0d7b14a525c8c"
-http_server = "{HEALTHCHECK_SERVER_NAME}"
-routes = [""]
-
-[[http_server]]
-name = "{WEBHOOK_SERVER_NAME}"
-listening_addr = "0.0.0.0:{WEBHOOK_INTERNAL_PORT}"
-
-"#
-    );
-
-    for activity in config.activity_wasm_list.iter().flatten() {
-        toml_string.push_str("\n[[activity_wasm]]\n");
-        toml_string.push_str(&format!("name = \"{}\"\n", activity.name));
-        toml_string.push_str(&format!("location.oci = \"{}\"\n", activity.location_oci));
-        if let Some(env_vars) = &activity.env_vars {
-            let quoted_env_vars: Vec<String> =
-                env_vars.iter().map(|var| format!("\"{}\"", var)).collect();
-            toml_string.push_str(&format!("env_vars = [{}]\n", quoted_env_vars.join(", ")));
-        }
-        if let Some(lock_expiry) = activity.lock_expiry_seconds {
-            toml_string.push_str(&format!("exec.lock_expiry.seconds = {}\n", lock_expiry));
-        }
-    }
-
-    for workflow in config.workflow_list.iter().flatten() {
-        toml_string.push_str("\n[[workflow]]\n");
-        toml_string.push_str(&format!("name = \"{}\"\n", workflow.name));
-        toml_string.push_str(&format!("location.oci = \"{}\"\n", workflow.location_oci));
-    }
-
-    for webhook in config.webhook_endpoint_list.iter().flatten() {
-        toml_string.push_str("\n[[webhook_endpoint]]\n");
-        toml_string.push_str(&format!("name = \"{}\"\n", webhook.name));
-        toml_string.push_str(&format!("location.oci = \"{}\"\n", webhook.location_oci));
-        toml_string.push_str("http_server = \"");
-        toml_string.push_str(WEBHOOK_SERVER_NAME);
-        toml_string.push_str("\"\n");
-
-        let routes_str: Vec<String> = webhook
-            .routes
-            .iter()
-            .map(|route| {
-                let methods_str: Vec<String> = route
-                    .methods
-                    .iter()
-                    .map(|method| format!("\"{method}\""))
-                    .collect();
-                format!(
-                    "{{ methods = [{}], route = \"{}\" }}",
-                    methods_str.join(", "),
-                    route.path
-                )
-            })
-            .collect();
-        toml_string.push_str(&format!("routes = [{}]\n", routes_str.join(", ")));
-
-        if let Some(env_vars) = &webhook.env_vars {
-            let quoted_env_vars: Vec<String> =
-                env_vars.iter().map(|var| format!("\"{}\"", var)).collect();
-            toml_string.push_str(&format!("env_vars = [{}]\n", quoted_env_vars.join(", ")));
-        }
-    }
-
-    toml_string
-}
-
-#[cfg(test)]
-mod tests {
-    use insta::assert_snapshot;
-
-    use crate::{
-        generated::obelisk_flyio::workflow::types::{
-            ActivityWasm, ObeliskConfig, Route, WebhookEndpoint, Workflow,
-        },
-        serialize_obelisk_toml,
-    };
-
-    #[test]
-    fn serialize_obelisk_toml_should_produce_correct_config() {
-        let config = ObeliskConfig {
-            activity_wasm_list: Some(vec![
-                ActivityWasm {
-                    name: "stargazers_activity_llm_chatgpt".to_string(),
-                    location_oci: "docker.io/getobelisk/demo_stargazers_activity_llm_openai:2025-09-28@sha256:4b10a66c80bec625a6b0a2e8a4b5192f8a2356eca19c0a6705335771a8b8b1e8".to_string(),
-                    env_vars: Some(vec!["OPENAI_API_KEY".to_string()]),
-                    lock_expiry_seconds: Some(10),
-                },
-                ActivityWasm {
-                    name: "stargazers_activity_github_impl".to_string(),
-                    location_oci: "docker.io/getobelisk/demo_stargazers_activity_github_impl:2025-09-28@sha256:8f6fc9b1379b359e085998fa2fd7c966c450327d09770807dfba4b2f75731d72".to_string(),
-                    env_vars: Some(vec!["GITHUB_TOKEN".to_string()]),
-                    lock_expiry_seconds: Some(5),
-                },
-                ActivityWasm {
-                    name: "stargazers_activity_db_turso".to_string(),
-                    location_oci: "docker.io/getobelisk/demo_stargazers_activity_db_turso:2025-09-28@sha256:26b08b3d0c6e430944d8187a00bd9817a83ab89e11ba72d15e7533a758addf33".to_string(),
-                    env_vars: Some(vec!["TURSO_TOKEN".to_string(), "TURSO_LOCATION".to_string()]),
-                    lock_expiry_seconds: Some(5),
-                },
-            ]),
-            workflow_list: Some(vec![
-                Workflow {
-                    name: "stargazers_workflow".to_string(),
-                    location_oci: "docker.io/getobelisk/demo_stargazers_workflow:2025-09-28@sha256:678d85e3e2f89d22794fd1ffc0217bf23510e1349ee150a54d5c82cc2ef75834".to_string(),
-                },
-            ]),
-            webhook_endpoint_list: Some(vec![
-                WebhookEndpoint {
-                    name: "stargazers_webhook".to_string(),
-                    location_oci: "docker.io/getobelisk/demo_stargazers_webhook:2025-09-28@sha256:aa4dfa18d1ad7c1623163eeabb41a415ebad5296fca8f3b957987afcdb2a0f40".to_string(),
-                    routes: vec![
-                        Route {
-                            methods: vec!["POST".to_string(), "GET".to_string()],
-                            path: "".to_string(),
-                        },
-                    ],
-                    env_vars: Some(vec!["GITHUB_WEBHOOK_SECRET".to_string()]),
-                },
-            ]),
-        };
-
-        let toml = serialize_obelisk_toml(&config);
-        assert_snapshot!(toml);
-    }
 }

@@ -1,0 +1,77 @@
+---
+source: workflow/deployer-workflow/impl-flyio/src/toml.rs
+expression: toml
+---
+[[activity_wasm]]
+env_vars = ["OPENAI_API_KEY"]
+"exec.lock_expiry.seconds" = 10
+"location.oci" = "docker.io/getobelisk/demo_stargazers_activity_llm_openai:2025-09-28@sha256:4b10a66c80bec625a6b0a2e8a4b5192f8a2356eca19c0a6705335771a8b8b1e8"
+name = "stargazers_activity_llm_chatgpt"
+
+[[activity_wasm]]
+env_vars = ["GITHUB_TOKEN"]
+"exec.lock_expiry.seconds" = 5
+"location.oci" = "docker.io/getobelisk/demo_stargazers_activity_github_impl:2025-09-28@sha256:8f6fc9b1379b359e085998fa2fd7c966c450327d09770807dfba4b2f75731d72"
+name = "stargazers_activity_github_impl"
+
+[[activity_wasm]]
+env_vars = ["TURSO_TOKEN", "TURSO_LOCATION"]
+"exec.lock_expiry.seconds" = 5
+"location.oci" = "docker.io/getobelisk/demo_stargazers_activity_db_turso:2025-09-28@sha256:26b08b3d0c6e430944d8187a00bd9817a83ab89e11ba72d15e7533a758addf33"
+name = "stargazers_activity_db_turso"
+
+[api]
+listening_addr = "[::]:5005"
+
+[[http_server]]
+listening_addr = "0.0.0.0:8081"
+name = "healthcheck_server"
+
+[[http_server]]
+listening_addr = "0.0.0.0:8082"
+name = "webhook_server"
+
+[log.stdout]
+enabled = true
+level = "WARN,obelisk=info"
+
+[sqlite]
+directory = "/var/obelisk/obelisk-sqlite"
+
+[sqlite.pragma]
+cache_size = "3000"
+
+[wasm]
+cache_directory = "/var/obelisk/wasm"
+parallel_compilation = false
+
+[wasm.backtrace]
+persist = false
+
+[wasm.codegen_cache]
+directory = "/var/obeliskolume/codegen"
+
+[[webhook_endpoint]]
+http_server = "healthcheck_server"
+name = "webhook_healthcheck"
+routes = [""]
+
+[webhook_endpoint.location]
+oci = "docker.io/getobelisk/components_flyio_webhook_healthcheck:2025-10-01@sha256:6fbc11b80b441ae6e642327b1ec0ceba85b2868d85dbce2d99d0d7b14a525c8c"
+
+[[webhook_endpoint]]
+env_vars = ["GITHUB_WEBHOOK_SECRET"]
+http_server = "webhook_server"
+"location.oci" = "docker.io/getobelisk/demo_stargazers_webhook:2025-09-28@sha256:aa4dfa18d1ad7c1623163eeabb41a415ebad5296fca8f3b957987afcdb2a0f40"
+name = "stargazers_webhook"
+
+[[webhook_endpoint.routes]]
+methods = ["POST", "GET"]
+route = ""
+
+[webui]
+listening_addr = "[::]:8080"
+
+[[workflow]]
+"location.oci" = "docker.io/getobelisk/demo_stargazers_workflow:2025-09-28@sha256:678d85e3e2f89d22794fd1ffc0217bf23510e1349ee150a54d5c82cc2ef75834"
+name = "stargazers_workflow"
