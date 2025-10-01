@@ -2,6 +2,7 @@
 resolver = "2"
 members = [
     "workflow/deployer-workflow/impl-flyio",
+    "webhook/healthcheck",
 ]
 
 [workspace.package]

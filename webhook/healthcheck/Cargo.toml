@@ -1,0 +1,14 @@
+[package]
+name = "webhook-healthcheck"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+wstd.workspace = true
