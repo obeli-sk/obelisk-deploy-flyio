@@ -274,9 +274,10 @@ fn launch_final_vm(app_name: &str) -> Result<(), AppInitModifyError> {
     .map_err(AppInitModifyError::FinalVmError)
 }
 
-/// Sleep until the health check passes, observing max attempts, or the app is deleted.
-fn check_health(app_name: &str, max_healthcheck_attempts: u32) -> Result<(), AppInitModifyError> {
-    for _ in 0..max_healthcheck_attempts {
+/// Sleep until the health check passes, observing `health_check_deadline_secs`, or the app is deleted.
+fn check_health(app_name: &str, health_check_deadline_secs: u16) -> Result<(), AppInitModifyError> {
+    let start_secs = workflow_support::sleep(ScheduleAt::Now).seconds;
+    loop {
         match http_get::get_resp(&format!(
             "https://{app_name}.fly.dev:{HEALTHCHECK_EXTERNAL_PORT}"
         )) {
@@ -290,11 +291,14 @@ fn check_health(app_name: &str, max_healthcheck_attempts: u32) -> Result<(), App
                 bail_on_app_deletion(app_name)?;
             }
         }
-        workflow_support::sleep(ScheduleAt::In(SchedulingDuration::Seconds(
+        let current_secs = workflow_support::sleep(ScheduleAt::In(SchedulingDuration::Seconds(
             SLEEP_BETWEEN_RETRIES.as_secs(),
-        )));
+        )))
+        .seconds;
+        if current_secs - start_secs > health_check_deadline_secs as u64 {
+            return Err(AppInitModifyError::HealthCheckFailed);
+        }
     }
-    Err(AppInitModifyError::HealthCheckFailed)
 }
 
 fn cleanup(app_name: &str, modify_error: AppInitModifyError) -> AppInitError {
@@ -335,7 +339,7 @@ impl Guest for Component {
         org_slug: String,
         app_name: String,
         config: ObeliskConfig,
-        max_healthcheck_attempts: u32, // TODO: make it a max duration for secrets. Use sleep to obtain current time.
+        health_check_deadline_secs: u16,
     ) -> Result<(), AppInitModifyError> {
         let obelisk_toml = serialize_obelisk_toml(&config).unwrap(); // A panic is translated to `app-init-modify-error::execution-failed`
         app_create(&org_slug, &app_name)?;
@@ -349,7 +353,7 @@ impl Guest for Component {
         // All preparation is done, start the final VM.
         launch_final_vm(&app_name)?;
         // Make sure it is up.
-        check_health(&app_name, max_healthcheck_attempts)?;
+        check_health(&app_name, health_check_deadline_secs)?;
         Ok(())
     }
 
@@ -357,7 +361,7 @@ impl Guest for Component {
         org_slug: String,
         app_name: String,
         config: ObeliskConfig,
-        max_healthcheck_attempts: u32,
+        health_check_deadline_secs: u16,
     ) -> Result<(), AppInitError> {
         // TODO: Split to several child workflows: prepare, wait for secrets, finish
         // Launch a child workflow by using import.
@@ -366,7 +370,7 @@ impl Guest for Component {
             &org_slug,
             &app_name,
             &config,
-            max_healthcheck_attempts,
+            health_check_deadline_secs,
         )
         .map_err(|err| cleanup(&app_name, err))
     }

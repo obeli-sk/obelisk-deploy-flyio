@@ -12,7 +12,7 @@ interface workflow {
         org-slug: string,
         app-name: string,
         config: obelisk-config,
-        max-healthcheck-attempts: u32,
+        health-check-deadline-secs: u16,
         ) -> result<_, app-init-modify-error>;
 
     /// Wraps `app-init-no-cleanup` with a cleanup routine.
@@ -23,7 +23,7 @@ interface workflow {
         org-slug: string,
         app-name: string,
         config: obelisk-config,
-        max-healthcheck-attempts: u32,
+        health-check-deadline-secs: u16,
         ) -> result<_, app-init-error>;
 }
 
