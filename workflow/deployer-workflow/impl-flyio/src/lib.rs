@@ -30,6 +30,7 @@ use generated::{
     testing::http::http_get,
 };
 use hashbrown::HashSet;
+use std::time::Duration;
 use toml::serialize_obelisk_toml;
 
 struct Component;
@@ -38,8 +39,6 @@ export!(Component with_types_in generated);
 const VOLUME_NAME: &str = "db";
 const VM_NAME_TEMP: &str = "temp";
 const VM_NAME_FINAL: &str = "obelisk";
-const SLEEP: &str = "/usr/bin/sleep";
-const INFINITY: &str = "infinity";
 const VOLUME_MOUNT_PATH: &str = "/volume";
 const IMAGE: &str = "getobelisk/obelisk:0.25.1-ubuntu";
 const OBELISK_TOML_PATH: &str = formatcp!("{VOLUME_MOUNT_PATH}/obelisk.toml");
@@ -48,6 +47,7 @@ const REGION: Region = Region::Ams;
 const WEBHOOK_INTERNAL_PORT: u16 = 9090;
 const HEALTHCHECK_INTERNAL_PORT: u16 = 9091;
 const HEALTHCHECK_EXTERNAL_PORT: u16 = 444;
+const SLEEP_BETWEEN_RETRIES: Duration = Duration::from_secs(10);
 
 fn allocate_ip(app_name: &str) -> Result<(), AppInitModifyError> {
     activity_fly_http::ips::allocate(
@@ -87,8 +87,8 @@ fn setup_volume(app_name: &str, obelisk_toml: &str) -> Result<(), AppInitModifyE
             }),
             auto_destroy: None, // Some(false) - was creating a stopped machine
             init: Some(InitConfig {
-                cmd: Some(vec![INFINITY.to_string()]),
-                entrypoint: Some(vec![SLEEP.to_string()]),
+                entrypoint: Some(vec!["/usr/bin/sleep".to_string()]),
+                cmd: Some(vec!["infinity".to_string()]),
                 exec: None,
                 kernel_args: None,
                 swap_size_mb: Some(256),
@@ -124,7 +124,9 @@ fn setup_volume(app_name: &str, obelisk_toml: &str) -> Result<(), AppInitModifyE
         if state == MachineState::Started {
             break;
         }
-        workflow_support::sleep(ScheduleAt::In(SchedulingDuration::Seconds(1)));
+        workflow_support::sleep(ScheduleAt::In(SchedulingDuration::Seconds(
+            SLEEP_BETWEEN_RETRIES.as_secs(),
+        )));
     }
 
     // Write obelisk.toml
@@ -166,7 +168,9 @@ fn setup_volume(app_name: &str, obelisk_toml: &str) -> Result<(), AppInitModifyE
     // Ignore failure to shut down, temp VM will be deleted with force.
     let _ = activity_fly_http::machines::stop(app_name, &temp_vm);
     // Wait a bit for clean shutdown
-    workflow_support::sleep(ScheduleAt::In(SchedulingDuration::Seconds(5)));
+    workflow_support::sleep(ScheduleAt::In(SchedulingDuration::Seconds(
+        SLEEP_BETWEEN_RETRIES.as_secs(),
+    )));
     // Destroy the VM with force.
     activity_fly_http::machines::delete(app_name, &temp_vm, true)
         .map_err(AppInitModifyError::TempVmError)?;
@@ -181,11 +185,10 @@ fn bail_on_app_deletion(app_name: &str) -> Result<(), AppInitModifyError> {
     }
 }
 
-// Sleep until all requested secrets are stored in the app.
+// Sleep until all requested secrets are stored in the app or the app is deleted.
 fn wait_for_secrets(
     app_name: &str,
     required_secrets: HashSet<String>,
-    wait_for_secrets_sleep_between_retries_seconds: u32,
 ) -> Result<(), AppInitModifyError> {
     while !required_secrets.is_empty() {
         let actual_secrets = match activity_fly_http::secrets::list(app_name) {
@@ -202,7 +205,7 @@ fn wait_for_secrets(
             break;
         }
         workflow_support::sleep(ScheduleAt::In(SchedulingDuration::Seconds(
-            wait_for_secrets_sleep_between_retries_seconds as u64,
+            SLEEP_BETWEEN_RETRIES.as_secs(),
         )));
     }
     Ok(())
@@ -271,6 +274,7 @@ fn launch_final_vm(app_name: &str) -> Result<(), AppInitModifyError> {
     .map_err(AppInitModifyError::FinalVmError)
 }
 
+/// Sleep until the health check passes, observing max attempts, or the app is deleted.
 fn check_health(app_name: &str, max_healthcheck_attempts: u32) -> Result<(), AppInitModifyError> {
     for _ in 0..max_healthcheck_attempts {
         match http_get::get_resp(&format!(
@@ -286,7 +290,9 @@ fn check_health(app_name: &str, max_healthcheck_attempts: u32) -> Result<(), App
                 bail_on_app_deletion(app_name)?;
             }
         }
-        workflow_support::sleep(ScheduleAt::In(SchedulingDuration::Seconds(1)));
+        workflow_support::sleep(ScheduleAt::In(SchedulingDuration::Seconds(
+            SLEEP_BETWEEN_RETRIES.as_secs(),
+        )));
     }
     Err(AppInitModifyError::HealthCheckFailed)
 }
@@ -329,8 +335,7 @@ impl Guest for Component {
         org_slug: String,
         app_name: String,
         config: ObeliskConfig,
-        wait_for_secrets_sleep_between_retries_seconds: u32,
-        max_healthcheck_attempts: u32,
+        max_healthcheck_attempts: u32, // TODO: make it a max duration for secrets. Use sleep to obtain current time.
     ) -> Result<(), AppInitModifyError> {
         let obelisk_toml = serialize_obelisk_toml(&config).unwrap(); // A panic is translated to `app-init-modify-error::execution-failed`
         app_create(&org_slug, &app_name)?;
@@ -340,11 +345,7 @@ impl Guest for Component {
         setup_volume(&app_name, &obelisk_toml)?;
         // Sleep until all requested secrets are stored in the app.
         let required_secrets = get_secret_keys(config);
-        wait_for_secrets(
-            &app_name,
-            required_secrets,
-            wait_for_secrets_sleep_between_retries_seconds,
-        )?;
+        wait_for_secrets(&app_name, required_secrets)?;
         // All preparation is done, start the final VM.
         launch_final_vm(&app_name)?;
         // Make sure it is up.
@@ -356,16 +357,15 @@ impl Guest for Component {
         org_slug: String,
         app_name: String,
         config: ObeliskConfig,
-        wait_for_secrets_sleep_between_retries_seconds: u32,
         max_healthcheck_attempts: u32,
     ) -> Result<(), AppInitError> {
+        // TODO: Split to several child workflows: prepare, wait for secrets, finish
         // Launch a child workflow by using import.
         // In case of any error including a trap (panic), delete the whole app.
         workflow_import::app_init_no_cleanup(
             &org_slug,
             &app_name,
             &config,
-            wait_for_secrets_sleep_between_retries_seconds,
             max_healthcheck_attempts,
         )
         .map_err(|err| cleanup(&app_name, err))
