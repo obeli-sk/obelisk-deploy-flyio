@@ -18,7 +18,6 @@ Point the script at stargazers' `.envrc` file.
 
 When all required secrets are present, the `app-init` workflow finishes.
 
-
 ## Utils
 
 Launch a VM:

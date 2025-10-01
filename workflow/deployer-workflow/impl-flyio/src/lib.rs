@@ -43,8 +43,9 @@ const IMAGE: &str = "getobelisk/obelisk:0.25.1-ubuntu";
 const OBELISK_TOML_PATH: &str = formatcp!("{VOLUME_MOUNT_PATH}/obelisk.toml");
 const OBELISK_BIN_PATH: &str = "/obelisk/obelisk";
 const REGION: Region = Region::Ams;
-const WEBHOOK_PORT: u16 = 9090;
-const DEPLOYED_HEALTHCHECK_PATH: &str = "/obeliskhealthcheck";
+const WEBHOOK_INTERNAL_PORT: u16 = 9090;
+const HEALTHCHECK_INTERNAL_PORT: u16 = 9091;
+const HEALTHCHECK_EXTERNAL_PORT: u16 = 444;
 
 fn allocate_ip(app_name: &str) -> Result<(), AppInitModifyError> {
     activity_fly_http::ips::allocate(
@@ -238,14 +239,26 @@ fn launch_final_vm(app_name: &str) -> Result<(), AppInitModifyError> {
                 volume: VOLUME_NAME.to_string(),
                 path: VOLUME_MOUNT_PATH.to_string(),
             }]),
-            services: Some(vec![ServiceConfig {
-                internal_port: WEBHOOK_PORT,
-                protocol: ServiceProtocol::Tcp,
-                ports: vec![PortConfig {
-                    port: 443,
-                    handlers: vec![PortHandler::Tls],
-                }],
-            }]),
+            services: Some(vec![
+                // Expose health check server as https://[::]:HEALTHCHECK_EXTERNAL_PORT
+                ServiceConfig {
+                    internal_port: HEALTHCHECK_INTERNAL_PORT,
+                    protocol: ServiceProtocol::Tcp,
+                    ports: vec![PortConfig {
+                        port: HEALTHCHECK_EXTERNAL_PORT,
+                        handlers: vec![PortHandler::Tls],
+                    }],
+                },
+                // expose webhook server as default https
+                ServiceConfig {
+                    internal_port: WEBHOOK_INTERNAL_PORT,
+                    protocol: ServiceProtocol::Tcp,
+                    ports: vec![PortConfig {
+                        port: 443,
+                        handlers: vec![PortHandler::Tls],
+                    }],
+                },
+            ]),
         },
         Some(REGION),
     )
@@ -311,7 +324,7 @@ impl Guest for Component {
 
         for _ in 0..max_healthcheck_attempts {
             match http_get::get_resp(&format!(
-                "https://{app_name}.fly.dev{DEPLOYED_HEALTHCHECK_PATH}"
+                "https://{app_name}.fly.dev:{HEALTHCHECK_EXTERNAL_PORT}"
             )) {
                 Ok(http_get::Response {
                     status_code,
@@ -367,6 +380,8 @@ fn get_secret_keys(config: ObeliskConfig) -> HashSet<String> {
 // FIXME: Insecure, use proper TOML serializer.
 fn serialize_obelisk_toml(config: &ObeliskConfig) -> String {
     const WEBHOOK_SERVER_NAME: &str = "webhook_server";
+    const HEALTHCHECK_SERVER_NAME: &str = "healthcheck_server";
+
     let mut toml_string = format!(
         r#"
 sqlite.directory = "{VOLUME_MOUNT_PATH}/obelisk-sqlite"
@@ -385,15 +400,19 @@ sqlite.pragma = {{ "cache_size" = "3000" }}
 enabled = true
 level = "WARN,obelisk=info"
 
+[[http_server]]
+name = "{HEALTHCHECK_SERVER_NAME}"
+listening_addr = "0.0.0.0:{HEALTHCHECK_INTERNAL_PORT}"
+
 [[webhook_endpoint]]
 name = "webhook_healthcheck"
 location.oci = "docker.io/getobelisk/components_flyio_webhook_healthcheck:2025-10-01@sha256:6fbc11b80b441ae6e642327b1ec0ceba85b2868d85dbce2d99d0d7b14a525c8c"
-http_server = "{WEBHOOK_SERVER_NAME}"
-routes = ["{DEPLOYED_HEALTHCHECK_PATH}"]
+http_server = "{HEALTHCHECK_SERVER_NAME}"
+routes = [""]
 
 [[http_server]]
 name = "{WEBHOOK_SERVER_NAME}"
-listening_addr = "0.0.0.0:{WEBHOOK_PORT}"
+listening_addr = "0.0.0.0:{WEBHOOK_INTERNAL_PORT}"
 
 "#
     );
