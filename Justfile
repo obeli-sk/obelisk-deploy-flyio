@@ -4,8 +4,11 @@ gen-obelisk-ext:
 build:
 	(cd workflow/deployer-workflow/impl-flyio && cargo build --release)
 
-serve:
-	obelisk server run --config obelisk-local.toml
-
 test:
 	cargo nextest run
+
+verify:
+	obelisk server verify --config obelisk-local.toml
+
+serve:
+	obelisk server run --config obelisk-local.toml
