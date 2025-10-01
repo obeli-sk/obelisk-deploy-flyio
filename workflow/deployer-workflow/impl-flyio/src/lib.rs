@@ -175,7 +175,7 @@ fn setup_volume(app_name: &str, config: &ObeliskConfig) -> Result<(), AppInitMod
 fn wait_for_secrets(
     app_name: &str,
     required_secrets: HashSet<String>,
-    sleep_between_retries_seconds: u32,
+    wait_for_secrets_sleep_between_retries_seconds: u32,
 ) -> Result<(), AppInitModifyError> {
     while !required_secrets.is_empty() {
         let actual_secrets = match activity_fly_http::secrets::list(app_name) {
@@ -195,7 +195,7 @@ fn wait_for_secrets(
             break;
         }
         workflow_support::sleep(ScheduleAt::In(SchedulingDuration::Seconds(
-            sleep_between_retries_seconds as u64,
+            wait_for_secrets_sleep_between_retries_seconds as u64,
         )));
     }
     Ok(())
@@ -290,7 +290,7 @@ impl Guest for Component {
         org_slug: String,
         app_name: String,
         config: ObeliskConfig,
-        sleep_between_retries_seconds: u32,
+        wait_for_secrets_sleep_between_retries_seconds: u32,
         max_healthcheck_attempts: u32,
     ) -> Result<(), AppInitModifyError> {
         app_create(&org_slug, &app_name)?;
@@ -300,7 +300,11 @@ impl Guest for Component {
         setup_volume(&app_name, &config)?;
         // Sleep until all requested secrets are stored in the app.
         let required_secrets = get_secret_keys(config);
-        wait_for_secrets(&app_name, required_secrets, sleep_between_retries_seconds)?;
+        wait_for_secrets(
+            &app_name,
+            required_secrets,
+            wait_for_secrets_sleep_between_retries_seconds,
+        )?;
         // All preparation is done, start the final VM.
         launch_final_vm(&app_name)?;
 
@@ -324,7 +328,7 @@ impl Guest for Component {
         org_slug: String,
         app_name: String,
         config: ObeliskConfig,
-        sleep_between_retries_seconds: u32,
+        wait_for_secrets_sleep_between_retries_seconds: u32,
         max_healthcheck_attempts: u32,
     ) -> Result<(), AppInitError> {
         // Launch a child workflow by using import.
@@ -333,7 +337,7 @@ impl Guest for Component {
             &org_slug,
             &app_name,
             &config,
-            sleep_between_retries_seconds,
+            wait_for_secrets_sleep_between_retries_seconds,
             max_healthcheck_attempts,
         )
         .map_err(|err| cleanup(&app_name, err))

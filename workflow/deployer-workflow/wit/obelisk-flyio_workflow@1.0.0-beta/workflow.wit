@@ -12,7 +12,7 @@ interface workflow {
         org-slug: string,
         app-name: string,
         config: obelisk-config,
-        sleep-between-retries-seconds: u32,
+        wait-for-secrets-sleep-between-retries-seconds: u32,
         max-healthcheck-attempts: u32,
         ) -> result<_, app-init-modify-error>;
 
@@ -24,7 +24,7 @@ interface workflow {
         org-slug: string,
         app-name: string,
         config: obelisk-config,
-        sleep-between-retries-seconds: u32,
+        wait-for-secrets-sleep-between-retries-seconds: u32,
         max-healthcheck-attempts: u32,
         ) -> result<_, app-init-error>;
 }
