@@ -278,20 +278,17 @@ fn launch_final_vm(app_name: &str) -> Result<(), AppInitModifyError> {
 /// Sleep until the health check passes, observing the deadline, or the app is deleted.
 fn check_health(app_name: &str, health_check_deadline_secs: u16) -> Result<(), AppInitModifyError> {
     let start_secs = workflow_support::sleep(ScheduleAt::Now).seconds;
+    let url = format!("https://{app_name}.fly.dev:{HEALTHCHECK_EXTERNAL_PORT}");
     loop {
-        match http_get::get_resp(&format!(
-            "https://{app_name}.fly.dev:{HEALTHCHECK_EXTERNAL_PORT}"
-        )) {
-            Ok(http_get::Response {
-                status_code,
-                body: _,
-            }) if (200..300).contains(&status_code) => {
-                return Ok(());
-            }
-            _ => {
-                bail_on_app_deletion(app_name)?;
-            }
+        if let Ok(http_get::Response {
+            status_code,
+            body: _,
+        }) = http_get::get_resp(&url)
+            && (200..300).contains(&status_code)
+        {
+            return Ok(());
         }
+        bail_on_app_deletion(app_name)?;
         let current_secs = workflow_support::sleep(ScheduleAt::In(SchedulingDuration::Seconds(
             SLEEP_BETWEEN_RETRIES.as_secs(),
         )))
