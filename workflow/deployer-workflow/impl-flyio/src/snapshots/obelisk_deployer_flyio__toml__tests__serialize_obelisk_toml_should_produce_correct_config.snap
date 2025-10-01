@@ -64,7 +64,7 @@ parallel_compilation = false
 persist = false
 
 [wasm.codegen_cache]
-directory = "/volumeolume/codegen"
+directory = "/volume/codegen"
 
 [[webhook_endpoint]]
 http_server = "healthcheck_server"

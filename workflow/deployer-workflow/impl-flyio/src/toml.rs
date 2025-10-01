@@ -10,7 +10,7 @@ pub(crate) fn serialize_obelisk_toml(config: &ObeliskConfig) -> Result<String, a
         r#"
 sqlite.directory = "{VOLUME_MOUNT_PATH}/obelisk-sqlite"
 wasm.cache_directory = "{VOLUME_MOUNT_PATH}/wasm"
-wasm.codegen_cache.directory = "{VOLUME_MOUNT_PATH}olume/codegen"
+wasm.codegen_cache.directory = "{VOLUME_MOUNT_PATH}/codegen"
 
 wasm.parallel_compilation = false
 wasm.backtrace.persist = false # Speed up execution
