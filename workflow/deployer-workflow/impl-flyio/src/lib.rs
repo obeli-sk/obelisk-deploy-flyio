@@ -174,6 +174,13 @@ fn setup_volume(app_name: &str, obelisk_toml: &str) -> Result<(), AppInitModifyE
     Ok(())
 }
 
+fn bail_on_app_deletion(app_name: &str) -> Result<(), AppInitModifyError> {
+    match activity_fly_http::apps::get(app_name) {
+        Ok(None) => return Err(AppInitModifyError::AppDeleted),
+        _ => Ok(()),
+    }
+}
+
 // Sleep until all requested secrets are stored in the app.
 fn wait_for_secrets(
     app_name: &str,
@@ -187,11 +194,8 @@ fn wait_for_secrets(
                 .map(|secret| secret.name)
                 .collect(),
             Err(_) => {
-                // has the app been deleted?
-                match activity_fly_http::apps::get(app_name) {
-                    Ok(None) => return Err(AppInitModifyError::AppDeleted),
-                    Ok(Some(_)) | Err(_) => HashSet::new(), // app exists or unknown, keep looping.
-                }
+                bail_on_app_deletion(app_name)?;
+                HashSet::default()
             }
         };
         if required_secrets.is_subset(&actual_secrets) {
@@ -278,7 +282,9 @@ fn check_health(app_name: &str, max_healthcheck_attempts: u32) -> Result<(), App
             }) if (200..300).contains(&status_code) => {
                 return Ok(());
             }
-            _ => {}
+            _ => {
+                bail_on_app_deletion(app_name)?;
+            }
         }
         workflow_support::sleep(ScheduleAt::In(SchedulingDuration::Seconds(1)));
     }
