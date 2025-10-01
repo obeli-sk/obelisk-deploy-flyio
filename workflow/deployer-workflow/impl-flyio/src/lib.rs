@@ -310,7 +310,7 @@ impl Guest for Component {
                 Ok(http_get::Response {
                     status_code,
                     body: _,
-                }) if status_code >= 200 && status_code < 300 => {
+                }) if (200..300).contains(&status_code) => {
                     break;
                 }
                 _ => {}
