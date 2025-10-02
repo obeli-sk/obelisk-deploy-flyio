@@ -12,7 +12,7 @@ test:
 	cargo nextest run
 
 verify:
-	obelisk server verify --config obelisk-local.toml
+	obelisk server verify --config ${CONFIG:-obelisk-local.toml}
 
 serve:
-	obelisk server run --config obelisk-local.toml
+	obelisk server run --config ${CONFIG:-obelisk-local.toml}

@@ -54,10 +54,10 @@ interface ips {
         ip-variant: ip-variant,
     }
 
-    /// Allocate an IP address
-    /// Idempotency note: Retry of a success will allocate another IP address.
+    /// Allocate an IP address.
+    /// Non idempotent: Retry of a success will allocate another IP address.
     /// Upon allocating an IP the caller should use `list` and `release` to prevent this issue.
-    allocate: func(app-name: string, request: ip-request) -> result<ip-address, string>;
+    allocate-unsafe: func(app-name: string, request: ip-request) -> result<ip-address, string>;
 
     /// List allocated IP addresses
     %list: func(app-name: string) -> result<list<ip-detail>, string>;

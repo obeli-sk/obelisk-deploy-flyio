@@ -47,3 +47,7 @@ jobs:
       - name: Verify obelisk-local.toml
         run: |
           nix develop --command obelisk server verify --config obelisk-local.toml --ignore-missing-env-vars
+
+      - name: Verify obelisk-oci.toml
+        run: |
+          nix develop --command obelisk server verify --config obelisk-oci.toml --ignore-missing-env-vars

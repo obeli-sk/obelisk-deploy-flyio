@@ -51,7 +51,7 @@ const SLEEP_BETWEEN_RETRIES: Duration = Duration::from_secs(10);
 const SLEEP_AFTER_TEMP_VM_SHUTDOWN: Duration = Duration::from_secs(5);
 
 fn allocate_ip(app_name: &str) -> Result<(), AppInitModifyError> {
-    activity_fly_http::ips::allocate(
+    activity_fly_http::ips::allocate_unsafe(
         app_name,
         IpRequest {
             config: IpVariant::Ipv6(Ipv6Config { region: None }),
