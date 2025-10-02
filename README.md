@@ -18,7 +18,7 @@ obelisk client execution submit -f obelisk-flyio:workflow/workflow@1.0.0-beta.ap
 "$(./scripts/json-app-init-stargazers.sh)"
 ```
 
-While the workflow is running, push the [stargazers](https://github.com/obeli-sk/demo-stargazers) secrets to the fly.io app -
+While the workflow is running, push the [stargazers secrets](https://github.com/obeli-sk/demo-stargazers/blob/main/.envrc-example) to the fly.io app -
 either using `fly` command, fly.io's dashboard or using following [script](scripts/secrets-send.sh):
 
 Point the script at stargazers' `.envrc` file.
@@ -46,12 +46,12 @@ The execution log can be inspected using the WebUI available at http://localhost
 
 <div>
   <img src="doc/trace.png" width="700px"/>
-  <div style="width:700px; text-align:center;"><em>Trace view</em></div>
+  <div style="width:700px;"><em>Trace view</em></div>
 </div>
 
 <div>
   <img src="doc/debug.png" width="700px"/>
-  <div style="width:700px; text-align:center;"><em>Debug view</em></div>
+  <div style="width:700px;"><em>Debug view</em></div>
 </div>
 
 
