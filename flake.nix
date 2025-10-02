@@ -38,7 +38,6 @@
               pkg-config
               rustToolchain
               wasm-tools
-              wasmtime.out
               wit-bindgen
             ];
           withObelisk = commonDeps ++ [ obelisk.packages.${system}.default ];
