@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+# Prints JSON containing arguments to `app-init` function.
+
 cat <<EOF
 [
 "$FLY_ORG_SLUG",

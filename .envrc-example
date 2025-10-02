@@ -3,7 +3,7 @@ use flake .
 # Needed for fly-http activity
 export FLY_API_TOKEN="..."
 
-# Using the real org-slug instead of "personal" alias is advised, see https://fly.io/organizations
+# Using the real org-slug instead of "personal" alias is advised, see yours at https://fly.io/organizations
 export FLY_ORG_SLUG="personal"
 
 # App name: Either create fly.toml based on fly-example.toml and extract the app name, or just enter it here.
