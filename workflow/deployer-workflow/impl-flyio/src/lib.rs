@@ -58,7 +58,15 @@ fn allocate_ip(app_name: &str) -> Result<(), AppInitModifyError> {
         },
     )
     .map(|_ip| ())
-    .map_err(AppInitModifyError::IpAllocateError)
+    .map_err(AppInitModifyError::IpAllocateError)?;
+    // Since this API is not idempotent, make sure just one IP has been allocated.
+    let ips =
+        activity_fly_http::ips::list(app_name).map_err(AppInitModifyError::IpAllocateError)?;
+    for ip_detail in ips.into_iter().skip(1) {
+        activity_fly_http::ips::release(app_name, &ip_detail.ip)
+            .map_err(AppInitModifyError::IpAllocateError)?;
+    }
+    Ok(())
 }
 
 fn setup_volume(app_name: &str, obelisk_toml: &str) -> Result<(), AppInitModifyError> {
