@@ -30,6 +30,7 @@ wstd = "0.5.6"
 [profile.release]
 opt-level = "z"
 lto = true
+overflow-checks = true
 
 [profile.release_webhook]
 inherits = "release"
