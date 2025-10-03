@@ -2,7 +2,7 @@
 
 cat <<EOF
 {
-    "image": "getobelisk/obelisk:0.25.1-ubuntu",
+    "image": "getobelisk/obelisk:0.25.3-ubuntu",
     "init": {
         "swap-size-mb": 256,
         "entrypoint":["/usr/bin/sleep"],
