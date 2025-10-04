@@ -2,6 +2,8 @@
 
 # Prints JSON containing arguments to `app-init` function.
 
+SKIP_CLEANUP=${SKIP_CLEANUP:-false}
+
 cat <<EOF
 [
 "$FLY_ORG_SLUG",
@@ -42,6 +44,7 @@ cat <<EOF
         }
     ]
 },
-60
+60,
+$SKIP_CLEANUP
 ]
 EOF

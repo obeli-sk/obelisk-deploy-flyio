@@ -38,9 +38,16 @@ export!(Component with_types_in generated);
 
 const VOLUME_NAME: &str = "db";
 const VM_NAME_TEMP: &str = "temp";
+
+const MAX_VM_FAILURE_RETRIES: u32 = 5;
+
+const MINIO_VM_NAME: &str = "minio";
+const MINIO_IMAGE: &str = "minio/minio:RELEASE.2025-09-07T16-13-09Z-cpuv1";
+const MINIO_BUCKET_NAME: &str = "litestream-bucket";
+
 const VM_NAME_FINAL: &str = "obelisk";
 const VOLUME_MOUNT_PATH: &str = "/volume";
-const IMAGE: &str = "getobelisk/obelisk:0.25.3-ubuntu";
+const FINAL_IMAGE: &str = "getobelisk/obelisk:0.25.3-ubuntu";
 const OBELISK_TOML_PATH: &str = formatcp!("{VOLUME_MOUNT_PATH}/obelisk.toml");
 const OBELISK_BIN_PATH: &str = "/obelisk/obelisk";
 const REGION: Region = Region::Ams;
@@ -69,6 +76,27 @@ fn allocate_ip(app_name: &str) -> Result<(), AppInitModifyError> {
     Ok(())
 }
 
+fn wait_until_started(app_name: &str, machine_id: &str) -> Result<(), AppInitModifyError> {
+    for _ in 0..10 {
+        let machine = activity_fly_http::machines::get(app_name, machine_id)
+            .map_err(AppInitModifyError::TempVmError)?;
+        let state = machine
+            .ok_or_else(|| {
+                AppInitModifyError::TempVmError(
+                    "cannot find temp VM that was created successfuly".to_string(),
+                )
+            })?
+            .state;
+        if state == MachineState::Started {
+            break;
+        }
+        workflow_support::sleep(ScheduleAt::In(SchedulingDuration::Seconds(
+            SLEEP_BETWEEN_RETRIES.as_secs(),
+        )));
+    }
+    Ok(())
+}
+
 fn setup_volume(app_name: &str, obelisk_toml: &str) -> Result<(), AppInitModifyError> {
     // Create a volume
     activity_fly_http::volumes::create(
@@ -83,11 +111,11 @@ fn setup_volume(app_name: &str, obelisk_toml: &str) -> Result<(), AppInitModifyE
     .map_err(AppInitModifyError::VolumeCreateError)?;
 
     // Launch a temporary VM
-    let temp_vm = activity_fly_http::machines::create(
+    let temp_vm_id = activity_fly_http::machines::create(
         app_name,
         VM_NAME_TEMP,
         &MachineConfig {
-            image: IMAGE.to_string(),
+            image: FINAL_IMAGE.to_string(),
             guest: Some(GuestConfig {
                 cpu_kind: Some(CpuKind::Shared),
                 cpus: Some(1),
@@ -119,29 +147,12 @@ fn setup_volume(app_name: &str, obelisk_toml: &str) -> Result<(), AppInitModifyE
     )
     .map_err(AppInitModifyError::TempVmError)?;
 
-    // Wait until its state is "started"
-    for _ in 0..10 {
-        let machine = activity_fly_http::machines::get(app_name, &temp_vm)
-            .map_err(AppInitModifyError::TempVmError)?;
-        let state = machine
-            .ok_or_else(|| {
-                AppInitModifyError::TempVmError(
-                    "cannot find temp VM that was created successfuly".to_string(),
-                )
-            })?
-            .state;
-        if state == MachineState::Started {
-            break;
-        }
-        workflow_support::sleep(ScheduleAt::In(SchedulingDuration::Seconds(
-            SLEEP_BETWEEN_RETRIES.as_secs(),
-        )));
-    }
+    wait_until_started(app_name, &temp_vm_id)?;
 
     // Write obelisk.toml
     let exec_response = activity_fly_http::machines::exec(
         app_name,
-        &temp_vm,
+        &temp_vm_id,
         &[
             "sh".to_string(),
             "-c".to_string(),
@@ -157,7 +168,7 @@ fn setup_volume(app_name: &str, obelisk_toml: &str) -> Result<(), AppInitModifyE
     // Download WASM Components, verify configuration.
     let exec_response = activity_fly_http::machines::exec(
         app_name,
-        &temp_vm,
+        &temp_vm_id,
         &[
             OBELISK_BIN_PATH.to_string(),
             "server".to_string(),
@@ -175,13 +186,13 @@ fn setup_volume(app_name: &str, obelisk_toml: &str) -> Result<(), AppInitModifyE
     }
     // Attempt to shutdown the temp VM.
     // Ignore failure to shut down, temp VM will be deleted with force.
-    let _ = activity_fly_http::machines::stop(app_name, &temp_vm);
+    let _ = activity_fly_http::machines::stop(app_name, &temp_vm_id);
     // Wait a bit for clean shutdown
     workflow_support::sleep(ScheduleAt::In(SchedulingDuration::Seconds(
         SLEEP_AFTER_TEMP_VM_SHUTDOWN.as_secs(),
     )));
     // Destroy the VM with force.
-    activity_fly_http::machines::delete(app_name, &temp_vm, true)
+    activity_fly_http::machines::delete(app_name, &temp_vm_id, true)
         .map_err(AppInitModifyError::TempVmError)?;
 
     Ok(())
@@ -220,12 +231,74 @@ fn wait_for_secrets(
     Ok(())
 }
 
-fn launch_final_vm(app_name: &str) -> Result<(), AppInitModifyError> {
-    activity_fly_http::machines::create(
+fn minio_start(app_name: &str) -> Result<String, AppInitModifyError> {
+    let machine_id = activity_fly_http::machines::create(
+        app_name,
+        MINIO_VM_NAME,
+        &MachineConfig {
+            image: MINIO_IMAGE.to_string(),
+            guest: Some(GuestConfig {
+                cpu_kind: Some(CpuKind::Shared),
+                cpus: Some(1),
+                memory_mb: Some(256),
+                kernel_args: None,
+            }),
+            auto_destroy: None,
+            init: Some(InitConfig {
+                cmd: Some(
+                    "server /data --console-address :9001"
+                        .split(' ')
+                        .map(ToString::to_string)
+                        .collect(),
+                ),
+                entrypoint: None,
+                exec: None,
+                kernel_args: None,
+                swap_size_mb: None,
+                tty: None,
+            }),
+            env: None,
+            restart: Some(MachineRestart {
+                max_retries: Some(MAX_VM_FAILURE_RETRIES),
+                policy: RestartPolicy::OnFailure,
+            }),
+            stop_config: None,
+            mounts: None,
+            services: None,
+        },
+        Some(REGION),
+    )
+    .map_err(AppInitModifyError::MinioVmError)?;
+    wait_until_started(app_name, &machine_id)?;
+    Ok(machine_id)
+}
+
+fn minio_configure(app_name: &str, machine_id: &str) -> Result<(), AppInitModifyError> {
+    let exec = |command: &str| {
+        let exec_response = activity_fly_http::machines::exec(
+            app_name,
+            machine_id,
+            &command
+                .split(' ')
+                .map(ToString::to_string)
+                .collect::<Vec<_>>(),
+        )
+        .map_err(AppInitModifyError::MinioVmError)?;
+        assert_eq!(0, exec_response.exit_code.unwrap());
+        Ok(())
+    };
+    exec("mc alias set myminio http://127.0.0.1:9000 minioadmin minioadmin")?;
+    exec(&format!("mc mb myminio/{MINIO_BUCKET_NAME}"))?;
+    exec("mc ls myminio --json")?;
+    Ok(())
+}
+
+fn start_final_vm(app_name: &str) -> Result<(), AppInitModifyError> {
+    let machine_id = activity_fly_http::machines::create(
         app_name,
         VM_NAME_FINAL,
         &MachineConfig {
-            image: IMAGE.to_string(),
+            image: FINAL_IMAGE.to_string(),
             guest: Some(GuestConfig {
                 cpu_kind: Some(CpuKind::Shared),
                 cpus: Some(1),
@@ -240,7 +313,7 @@ fn launch_final_vm(app_name: &str) -> Result<(), AppInitModifyError> {
                         .map(ToString::to_string)
                         .collect(),
                 ),
-                entrypoint: None, // defaults to /obelisk/obelisk
+                entrypoint: None,
                 exec: None,
                 kernel_args: None,
                 swap_size_mb: Some(256),
@@ -248,8 +321,8 @@ fn launch_final_vm(app_name: &str) -> Result<(), AppInitModifyError> {
             }),
             env: None,
             restart: Some(MachineRestart {
-                max_retries: None,
-                policy: RestartPolicy::No,
+                max_retries: Some(MAX_VM_FAILURE_RETRIES),
+                policy: RestartPolicy::OnFailure,
             }),
             stop_config: None,
             mounts: Some(vec![Mount {
@@ -279,8 +352,9 @@ fn launch_final_vm(app_name: &str) -> Result<(), AppInitModifyError> {
         },
         Some(REGION),
     )
-    .map(|_| ())
-    .map_err(AppInitModifyError::FinalVmError)
+    .map_err(AppInitModifyError::FinalVmError)?;
+    wait_until_started(app_name, &machine_id)?;
+    Ok(())
 }
 
 /// Sleep until the health check passes, observing the deadline, or the app is deleted.
@@ -307,13 +381,19 @@ fn check_health(app_name: &str, health_check_deadline_secs: u16) -> Result<(), A
     }
 }
 
-fn cleanup(app_name: &str, modify_error: AppInitModifyError) -> AppInitError {
-    if matches!(
-        modify_error,
-        AppInitModifyError::AppNameGetError
-            | AppInitModifyError::AppNameConflict
-            | AppInitModifyError::AppDeleted
-    ) {
+fn cleanup(
+    app_name: &str,
+    modify_error: AppInitModifyError,
+    skip_cleanup_on_error: bool,
+) -> AppInitError {
+    if skip_cleanup_on_error
+        || matches!(
+            modify_error,
+            AppInitModifyError::AppNameGetError
+                | AppInitModifyError::AppNameConflict
+                | AppInitModifyError::AppDeleted
+        )
+    {
         return AppInitError::CleanupNotRequired;
     }
     // Delete the app with force.
@@ -363,9 +443,16 @@ impl Guest for Component {
         Ok(())
     }
 
+    fn minio_start(app_name: String) -> Result<String, AppInitModifyError> {
+        minio_start(&app_name)
+    }
+
+    fn minio_configure(app_name: String, machine_id: String) -> Result<(), AppInitModifyError> {
+        minio_configure(&app_name, &machine_id)
+    }
+
     fn start_final_vm(app_name: String) -> Result<(), AppInitModifyError> {
-        launch_final_vm(&app_name)?;
-        Ok(())
+        start_final_vm(&app_name)
     }
 
     fn wait_for_health_check(
@@ -381,19 +468,26 @@ impl Guest for Component {
         app_name: String,
         config: ObeliskConfig,
         health_check_deadline_secs: u16,
+        skip_cleanup_on_error: bool,
     ) -> Result<(), AppInitError> {
         // Launch sub-workflows by using import.
         // In case of any error including a trap (panic), delete the whole app.
         workflow_import::prepare(&org_slug, &app_name, &config)
-            .map_err(|err| cleanup(&app_name, err))?;
+            .map_err(|err| cleanup(&app_name, err, skip_cleanup_on_error))?;
 
         workflow_import::wait_for_secrets(&app_name, &config)
-            .map_err(|err| cleanup(&app_name, err))?;
+            .map_err(|err| cleanup(&app_name, err, skip_cleanup_on_error))?;
 
-        workflow_import::start_final_vm(&app_name).map_err(|err| cleanup(&app_name, err))?;
+        let minio_vm_id = workflow_import::minio_start(&app_name)
+            .map_err(|err| cleanup(&app_name, err, skip_cleanup_on_error))?;
+        workflow_import::minio_configure(&app_name, &minio_vm_id)
+            .map_err(|err| cleanup(&app_name, err, skip_cleanup_on_error))?;
+
+        workflow_import::start_final_vm(&app_name)
+            .map_err(|err| cleanup(&app_name, err, skip_cleanup_on_error))?;
 
         workflow_import::wait_for_health_check(&app_name, health_check_deadline_secs)
-            .map_err(|err| cleanup(&app_name, err))?;
+            .map_err(|err| cleanup(&app_name, err, skip_cleanup_on_error))?;
 
         Ok(())
     }

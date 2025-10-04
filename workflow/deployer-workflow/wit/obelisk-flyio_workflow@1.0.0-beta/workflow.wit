@@ -18,6 +18,17 @@ interface workflow {
         config: obelisk-config,
         ) -> result<_, app-init-modify-error>;
 
+    /// Start the MinIO VM.
+    minio-start: func(
+        app-name: string,
+        ) -> result<string, app-init-modify-error>;
+
+    /// Initialize the litestream bucket.
+    minio-configure: func(
+        app-name: string,
+        machine-id: string,
+        ) -> result<_, app-init-modify-error>;
+
     /// Start the final VM.
     start-final-vm: func(
         app-name: string,
@@ -38,6 +49,7 @@ interface workflow {
         app-name: string,
         config: obelisk-config,
         health-check-deadline-secs: u16,
+        skip-cleanup-on-error: bool,
         ) -> result<_, app-init-error>;
 }
 

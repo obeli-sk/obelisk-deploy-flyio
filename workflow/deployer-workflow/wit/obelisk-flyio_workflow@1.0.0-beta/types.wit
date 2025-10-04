@@ -54,6 +54,8 @@ interface types {
         verify-error(string),
         /// Waiting for secrets was interrupted by deleting the app.
         app-deleted,
+        /// Cannot start or configure MinIO VM
+        minio-vm-error(string),
         /// Cannot start the final VM
         final-vm-error(string),
         health-check-failed,
