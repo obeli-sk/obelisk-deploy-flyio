@@ -47,7 +47,7 @@ const MINIO_BUCKET_NAME: &str = "litestream-bucket";
 
 const VM_NAME_FINAL: &str = "obelisk";
 const VOLUME_MOUNT_PATH: &str = "/volume";
-const FINAL_IMAGE: &str = "getobelisk/obelisk:0.25.3-ubuntu";
+const FINAL_IMAGE: &str = "getobelisk/obelisk:0.25.4-ubuntu-litestream";
 const OBELISK_TOML_PATH: &str = formatcp!("{VOLUME_MOUNT_PATH}/obelisk.toml");
 const OBELISK_BIN_PATH: &str = "/obelisk/obelisk";
 const REGION: Region = Region::Ams;
@@ -284,10 +284,31 @@ fn minio_configure(app_name: &str, machine_id: &str) -> Result<(), AppInitModify
                 .collect::<Vec<_>>(),
         )
         .map_err(AppInitModifyError::MinioVmError)?;
-        assert_eq!(0, exec_response.exit_code.unwrap());
-        Ok(())
+        exec_response
+            .exit_code
+            .ok_or_else(|| AppInitModifyError::MinioVmError("unknown exec status".to_string()))
     };
-    exec("mc alias set myminio http://127.0.0.1:9000 minioadmin minioadmin")?;
+
+    const MINIO_SERVER_STARTUP_ATTEMPTS: usize = 6;
+    (|| {
+        for idx in (0..MINIO_SERVER_STARTUP_ATTEMPTS).rev() {
+            // Wait at least 1 minute for MinIO server to start.
+            let exit_status =
+                exec("mc alias set myminio http://127.0.0.1:9000 minioadmin minioadmin")?;
+            if exit_status == 0 {
+                return Ok(());
+            }
+            if idx > 0 {
+                workflow_support::sleep(ScheduleAt::In(SchedulingDuration::Seconds(
+                    SLEEP_BETWEEN_RETRIES.as_secs(),
+                )));
+            }
+        }
+        Err(AppInitModifyError::MinioVmError(
+            "minio server initialization error".to_string(),
+        ))
+    })()?;
+
     exec(&format!("mc mb myminio/{MINIO_BUCKET_NAME}"))?;
     exec("mc ls myminio --json")?;
     Ok(())
