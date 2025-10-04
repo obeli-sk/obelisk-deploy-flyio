@@ -14,8 +14,7 @@ just build serve
 
 Run the [`app-init`](workflow/deployer-workflow/wit/obelisk-flyio_workflow@1.0.0-beta/workflow.wit) function:
 ```sh
-obelisk client execution submit -f obelisk-flyio:workflow/workflow@1.0.0-beta.app-init \
-"$(./scripts/json-app-init-stargazers.sh)"
+just init-app
 ```
 
 While the workflow is running, push the [stargazers secrets](https://github.com/obeli-sk/demo-stargazers/blob/main/.envrc-example) to the fly.io app -

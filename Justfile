@@ -16,3 +16,15 @@ verify:
 
 serve:
 	obelisk server run --config ${CONFIG:-obelisk-local.toml}
+
+init-app:
+	obelisk client execution submit -f obelisk-flyio:workflow/workflow@1.0.0-beta.app-init "$(./scripts/json-app-init-stargazers.sh)"
+
+init-app-no-cleanup:
+	SKIP_CLEANUP=true obelisk client execution submit -f obelisk-flyio:workflow/workflow@1.0.0-beta.app-init "$(./scripts/json-app-init-stargazers.sh)"
+
+secrets:
+	./scripts/secrets-send.sh ../stargazers/.envrc
+
+secrets-y:
+	SEND_ALL=true ./scripts/secrets-send.sh ../stargazers/.envrc

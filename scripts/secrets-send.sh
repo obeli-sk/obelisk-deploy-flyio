@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+SEND_ALL=${SEND_ALL:-false}
+
 exec 3<&0 # save stdin as FD 3
 
 FILE="${1:-.envrc}"
@@ -18,8 +20,7 @@ while IFS= read -r line; do
     val="${val#\'}"
 
     echo "Found: $key"
-    read -u 3 -p "Send to server? (y/n) " confirm
-    if [[ "$confirm" == "y" ]]; then
+    if [ "$SEND_ALL" = "true" ] || { read -u 3 -p "Send to server? (y/n) " confirm && [[ "$confirm" == "y" ]]; }; then
       curl --fail localhost:9090/ \
         -X POST \
         -H "Content-Type: application/json" \
