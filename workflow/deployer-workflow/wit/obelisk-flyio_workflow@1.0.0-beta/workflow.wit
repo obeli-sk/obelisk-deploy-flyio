@@ -9,6 +9,7 @@ interface workflow {
     prepare: func(
         org-slug: string,
         app-name: string,
+        obelisk-version: string,
         config: obelisk-config,
         minio: bool,
         ) -> result<_, app-init-modify-error>;
@@ -23,6 +24,7 @@ interface workflow {
     /// Start the final VM.
     start-final-vm: func(
         app-name: string,
+        obelisk-version: string,
         litestream: bool,
         ) -> result<_, app-init-modify-error>;
 
@@ -36,10 +38,10 @@ interface workflow {
     /// If an error occurs during app configuration,
     /// the app is deleted, leaving the state as it was before this function was called.
     /// If the cleanup fails as well `cleanup-error` is raised.
-    // TODO: Add Obelisk version
     app-init: func(
         org-slug: string,
         app-name: string,
+        obelisk-version: string,
         config: obelisk-config,
         secrets-deadline-secs: u16,
         health-check-deadline-secs: u16,

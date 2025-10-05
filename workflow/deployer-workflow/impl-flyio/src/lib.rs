@@ -51,7 +51,6 @@ const MINIO_PORT: u16 = 9000;
 
 const VM_NAME_FINAL: &str = "obelisk";
 const VOLUME_MOUNT_PATH: &str = "/volume";
-const FINAL_IMAGE: &str = "getobelisk/obelisk:0.25.4-ubuntu-litestream";
 const OBELISK_TOML_PATH: &str = formatcp!("{VOLUME_MOUNT_PATH}/obelisk.toml");
 const OBELISK_BIN_PATH: &str = "/obelisk/obelisk";
 const LITESTREAM_CONFIG_PATH: &str = formatcp!("{VOLUME_MOUNT_PATH}/litestream.yml");
@@ -63,6 +62,10 @@ const HEALTHCHECK_INTERNAL_PORT: u16 = 9091;
 const HEALTHCHECK_EXTERNAL_PORT: u16 = 444;
 const SLEEP_BETWEEN_RETRIES: Duration = Duration::from_secs(10);
 const SLEEP_AFTER_TEMP_VM_SHUTDOWN: Duration = Duration::from_secs(5);
+
+fn obelisk_image(obelisk_version: &str) -> String {
+    format!("getobelisk/obelisk:{obelisk_version}-ubuntu-litestream")
+}
 
 fn allocate_ip(app_name: &str) -> Result<(), AppInitModifyError> {
     activity_fly_http::ips::allocate_unsafe(
@@ -108,6 +111,7 @@ fn wait_until_started(app_name: &str, machine_id: &str) -> Result<(), AppInitMod
 // If minio is enabled, configure litestream.yml
 fn setup_volume(
     app_name: &str,
+    obelisk_version: &str,
     obelisk_toml: &str,
     minio_machine_id: Option<&str>,
 ) -> Result<(), AppInitModifyError> {
@@ -128,7 +132,7 @@ fn setup_volume(
         app_name,
         VM_NAME_TEMP,
         &MachineConfig {
-            image: FINAL_IMAGE.to_string(),
+            image: obelisk_image(obelisk_version),
             guest: Some(GuestConfig {
                 cpu_kind: Some(CpuKind::Shared),
                 cpus: Some(1),
@@ -326,7 +330,11 @@ fn minio_configure(app_name: &str, machine_id: &str) -> Result<(), AppInitModify
     Ok(())
 }
 
-fn start_final_vm(app_name: &str, litestream: bool) -> Result<(), AppInitModifyError> {
+fn start_final_vm(
+    app_name: &str,
+    obelisk_version: &str,
+    litestream: bool,
+) -> Result<(), AppInitModifyError> {
     let entrypoint = if litestream {
         Some(vec!["/usr/bin/litestream".to_string()])
     } else {
@@ -350,7 +358,7 @@ fn start_final_vm(app_name: &str, litestream: bool) -> Result<(), AppInitModifyE
         app_name,
         VM_NAME_FINAL,
         &MachineConfig {
-            image: FINAL_IMAGE.to_string(),
+            image: obelisk_image(obelisk_version),
             guest: Some(GuestConfig {
                 cpu_kind: Some(CpuKind::Shared),
                 cpus: Some(1),
@@ -487,6 +495,7 @@ impl Guest for Component {
     fn prepare(
         org_slug: String,
         app_name: String,
+        obelisk_version: String,
         config: ObeliskConfig,
         minio: bool,
     ) -> Result<(), AppInitModifyError> {
@@ -503,7 +512,12 @@ impl Guest for Component {
         } else {
             None
         };
-        setup_volume(&app_name, &obelisk_toml, minio_machine_id.as_deref())?;
+        setup_volume(
+            &app_name,
+            &obelisk_version,
+            &obelisk_toml,
+            minio_machine_id.as_deref(),
+        )?;
         Ok(())
     }
 
@@ -517,8 +531,12 @@ impl Guest for Component {
         Ok(())
     }
 
-    fn start_final_vm(app_name: String, litestream: bool) -> Result<(), AppInitModifyError> {
-        start_final_vm(&app_name, litestream)
+    fn start_final_vm(
+        app_name: String,
+        obelisk_version: String,
+        litestream: bool,
+    ) -> Result<(), AppInitModifyError> {
+        start_final_vm(&app_name, &obelisk_version, litestream)
     }
 
     fn wait_for_health_check(
@@ -532,6 +550,7 @@ impl Guest for Component {
     fn app_init(
         org_slug: String,
         app_name: String,
+        obelisk_version: String,
         config: ObeliskConfig,
         secrets_deadline_secs: u16,
         health_check_deadline_secs: u16,
@@ -540,13 +559,13 @@ impl Guest for Component {
     ) -> Result<(), AppInitError> {
         // Launch sub-workflows by using import.
         // In case of any error including a trap (panic), delete the whole app.
-        workflow_import::prepare(&org_slug, &app_name, &config, minio)
+        workflow_import::prepare(&org_slug, &app_name, &obelisk_version, &config, minio)
             .map_err(|err| cleanup(&app_name, err, skip_cleanup_on_error))?;
 
         workflow_import::wait_for_secrets(&app_name, &config, secrets_deadline_secs)
             .map_err(|err| cleanup(&app_name, err, skip_cleanup_on_error))?;
 
-        workflow_import::start_final_vm(&app_name, minio)
+        workflow_import::start_final_vm(&app_name, &obelisk_version, minio)
             .map_err(|err| cleanup(&app_name, err, skip_cleanup_on_error))?;
 
         workflow_import::wait_for_health_check(&app_name, health_check_deadline_secs)

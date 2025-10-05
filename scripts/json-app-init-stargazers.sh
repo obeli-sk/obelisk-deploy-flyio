@@ -2,16 +2,17 @@
 
 # Prints JSON containing arguments to `app-init` function.
 
-SKIP_CLEANUP=${SKIP_CLEANUP:-false}
-
+OBELISK_VERSION=${OBELISK_VERSION:-$(obelisk -v | cut -d ' ' -f 2)}
 SECRETS_DEADLINE_SECS=${SECRETS_DEADLINE_SECS:-120}
 HEALTH_CHECK_DEADLINE_SECS=${HEALTH_CHECK_DEADLINE_SECS:-120}
+SKIP_CLEANUP=${SKIP_CLEANUP:-false}
 MINIO=${MINIO:-true}
 
 cat <<EOF
 [
 "$FLY_ORG_SLUG",
 "$FLY_APP_NAME",
+"$OBELISK_VERSION",
 {
     "activity-wasm-list":[
         {
