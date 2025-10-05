@@ -100,6 +100,12 @@ listening_addr = "0.0.0.0:{WEBHOOK_INTERNAL_PORT}"
                 );
                 activity_table.insert("exec".to_string(), toml::Value::Table(exec_table));
             }
+            if let Some(max_retries) = activity.max_retries {
+                activity_table.insert(
+                    "max_retries".to_string(),
+                    toml::Value::Integer(max_retries.into()),
+                );
+            }
             activity_array.push(toml::Value::Table(activity_table));
         }
     }
@@ -207,18 +213,21 @@ mod tests {
                     location_oci: "docker.io/getobelisk/demo_stargazers_activity_llm_openai:2025-09-28@sha256:4b10a66c80bec625a6b0a2e8a4b5192f8a2356eca19c0a6705335771a8b8b1e8".to_string(),
                     env_vars: Some(vec!["OPENAI_API_KEY".to_string()]),
                     lock_expiry_seconds: Some(10),
+                    max_retries: None,
                 },
                 ActivityWasm {
                     name: "stargazers_activity_github_impl".to_string(),
                     location_oci: "docker.io/getobelisk/demo_stargazers_activity_github_impl:2025-09-28@sha256:8f6fc9b1379b359e085998fa2fd7c966c450327d09770807dfba4b2f75731d72".to_string(),
                     env_vars: Some(vec!["GITHUB_TOKEN".to_string()]),
                     lock_expiry_seconds: Some(5),
+                    max_retries: None,
                 },
                 ActivityWasm {
                     name: "stargazers_activity_db_turso".to_string(),
                     location_oci: "docker.io/getobelisk/demo_stargazers_activity_db_turso:2025-09-28@sha256:26b08b3d0c6e430944d8187a00bd9817a83ab89e11ba72d15e7533a758addf33".to_string(),
                     env_vars: Some(vec!["TURSO_TOKEN".to_string(), "TURSO_LOCATION".to_string()]),
                     lock_expiry_seconds: Some(5),
+                    max_retries: Some(9),
                 },
             ]),
             workflow_list: Some(vec![

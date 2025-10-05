@@ -27,6 +27,7 @@ env_vars = [
     "TURSO_TOKEN",
     "TURSO_LOCATION",
 ]
+max_retries = 9
 name = "stargazers_activity_db_turso"
 
 [activity_wasm.exec.lock_expiry]

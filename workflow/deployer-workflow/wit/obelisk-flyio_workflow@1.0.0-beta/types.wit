@@ -16,6 +16,7 @@ interface types {
         location-oci: string,
         env-vars: option<list<env-var>>,
         lock-expiry-seconds: option<u32>,
+        max-retries: option<u32>,
     }
 
     record workflow {
