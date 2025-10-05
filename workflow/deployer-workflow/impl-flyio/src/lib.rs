@@ -44,12 +44,19 @@ const MAX_VM_FAILURE_RETRIES: u32 = 5;
 const MINIO_VM_NAME: &str = "minio";
 const MINIO_IMAGE: &str = "minio/minio:RELEASE.2025-09-07T16-13-09Z-cpuv1";
 const MINIO_BUCKET_NAME: &str = "litestream-bucket";
+// TODO: Move to obelisk.toml
+const MINIO_ACCESS_KEY_ID: &str = "minioadmin";
+const MINIO_SECRET_ACCESS_KEY: &str = "minioadmin";
+const MINIO_PORT: u16 = 9000;
 
 const VM_NAME_FINAL: &str = "obelisk";
 const VOLUME_MOUNT_PATH: &str = "/volume";
 const FINAL_IMAGE: &str = "getobelisk/obelisk:0.25.4-ubuntu-litestream";
 const OBELISK_TOML_PATH: &str = formatcp!("{VOLUME_MOUNT_PATH}/obelisk.toml");
 const OBELISK_BIN_PATH: &str = "/obelisk/obelisk";
+const LITESTREAM_CONFIG_PATH: &str = formatcp!("{VOLUME_MOUNT_PATH}/litestream.yml");
+const SQLITE_DIRECTORY_PATH: &str = formatcp!("{VOLUME_MOUNT_PATH}/obelisk-sqlite");
+const SQLITE_FILE_PATH: &str = formatcp!("{SQLITE_DIRECTORY_PATH}/obelisk.sqlite");
 const REGION: Region = Region::Ams;
 const WEBHOOK_INTERNAL_PORT: u16 = 9090;
 const HEALTHCHECK_INTERNAL_PORT: u16 = 9091;
@@ -97,7 +104,13 @@ fn wait_until_started(app_name: &str, machine_id: &str) -> Result<(), AppInitMod
     Ok(())
 }
 
-fn setup_volume(app_name: &str, obelisk_toml: &str) -> Result<(), AppInitModifyError> {
+// Put `obelisk.toml`, downloaded WASM files and codegen cache on a new volume.
+// If minio is enabled, configure litestream.yml
+fn setup_volume(
+    app_name: &str,
+    obelisk_toml: &str,
+    minio_machine_id: Option<&str>,
+) -> Result<(), AppInitModifyError> {
     // Create a volume
     activity_fly_http::volumes::create(
         app_name,
@@ -149,24 +162,24 @@ fn setup_volume(app_name: &str, obelisk_toml: &str) -> Result<(), AppInitModifyE
 
     wait_until_started(app_name, &temp_vm_id)?;
 
+    let write_file = |file_name: &str, content: &str| {
+        activity_fly_http::machines::exec_check_success(
+            app_name,
+            &temp_vm_id,
+            &[
+                "sh".to_string(),
+                "-c".to_string(),
+                format!("cat <<EOF > {file_name}\n{content}"),
+            ],
+        )
+        .map_err(AppInitModifyError::VolumeWriteError)
+    };
+
     // Write obelisk.toml
-    let exec_response = activity_fly_http::machines::exec(
-        app_name,
-        &temp_vm_id,
-        &[
-            "sh".to_string(),
-            "-c".to_string(),
-            format!("cat <<EOF > {OBELISK_TOML_PATH}\n{obelisk_toml}"),
-        ],
-    )
-    .map_err(AppInitModifyError::VolumeWriteError)?;
-    if exec_response.exit_code != Some(0) {
-        return Err(AppInitModifyError::VolumeWriteError(format!(
-            "cannot write obelisk.toml - {exec_response:?}"
-        )));
-    }
+    write_file(OBELISK_TOML_PATH, obelisk_toml)?;
+
     // Download WASM Components, verify configuration.
-    let exec_response = activity_fly_http::machines::exec(
+    activity_fly_http::machines::exec_check_success(
         app_name,
         &temp_vm_id,
         &[
@@ -179,11 +192,25 @@ fn setup_volume(app_name: &str, obelisk_toml: &str) -> Result<(), AppInitModifyE
         ],
     )
     .map_err(AppInitModifyError::VerifyError)?;
-    if exec_response.exit_code != Some(0) {
-        return Err(AppInitModifyError::VolumeWriteError(format!(
-            "cannot verify config - {exec_response:?}"
-        )));
+
+    if let Some(minio_machine_id) = minio_machine_id {
+        // Get the machine-id of MinIO VM
+
+        write_file(
+            LITESTREAM_CONFIG_PATH,
+            &format!(
+                r#"
+dbs:
+  - path: "{SQLITE_FILE_PATH}"
+    replica:
+      url: "s3://{MINIO_BUCKET_NAME}.{minio_machine_id}.vm.{app_name}.internal:{MINIO_PORT}/litestream/obelisk"
+      access-key-id: "{MINIO_ACCESS_KEY_ID}"
+      secret-access-key: "{MINIO_SECRET_ACCESS_KEY}"
+"#
+            ),
+        )?;
     }
+
     // Attempt to shutdown the temp VM.
     // Ignore failure to shut down, temp VM will be deleted with force.
     let _ = activity_fly_http::machines::stop(app_name, &temp_vm_id);
@@ -231,6 +258,7 @@ fn wait_for_secrets(
     Ok(())
 }
 
+// Testing instance of MinIO
 fn minio_start(app_name: &str) -> Result<String, AppInitModifyError> {
     let machine_id = activity_fly_http::machines::create(
         app_name,
@@ -275,7 +303,7 @@ fn minio_start(app_name: &str) -> Result<String, AppInitModifyError> {
 
 fn minio_configure(app_name: &str, machine_id: &str) -> Result<(), AppInitModifyError> {
     let exec = |command: &str| {
-        let exec_response = activity_fly_http::machines::exec(
+        activity_fly_http::machines::exec_check_success(
             app_name,
             machine_id,
             &command
@@ -283,38 +311,35 @@ fn minio_configure(app_name: &str, machine_id: &str) -> Result<(), AppInitModify
                 .map(ToString::to_string)
                 .collect::<Vec<_>>(),
         )
-        .map_err(AppInitModifyError::MinioVmError)?;
-        exec_response
-            .exit_code
-            .ok_or_else(|| AppInitModifyError::MinioVmError("unknown exec status".to_string()))
+        .map_err(AppInitModifyError::MinioVmError)
     };
 
-    const MINIO_SERVER_STARTUP_ATTEMPTS: usize = 6;
-    (|| {
-        for idx in (0..MINIO_SERVER_STARTUP_ATTEMPTS).rev() {
-            // Wait at least 1 minute for MinIO server to start.
-            let exit_status =
-                exec("mc alias set myminio http://127.0.0.1:9000 minioadmin minioadmin")?;
-            if exit_status == 0 {
-                return Ok(());
-            }
-            if idx > 0 {
-                workflow_support::sleep(ScheduleAt::In(SchedulingDuration::Seconds(
-                    SLEEP_BETWEEN_RETRIES.as_secs(),
-                )));
-            }
-        }
-        Err(AppInitModifyError::MinioVmError(
-            "minio server initialization error".to_string(),
-        ))
-    })()?;
-
+    exec("mc alias set myminio http://127.0.0.1:9000 minioadmin minioadmin")?;
     exec(&format!("mc mb myminio/{MINIO_BUCKET_NAME}"))?;
     exec("mc ls myminio --json")?;
     Ok(())
 }
 
-fn start_final_vm(app_name: &str) -> Result<(), AppInitModifyError> {
+fn start_final_vm(app_name: &str, litestream: bool) -> Result<(), AppInitModifyError> {
+    let entrypoint = if litestream {
+        Some(vec!["/usr/bin/litestream".to_string()])
+    } else {
+        None
+    };
+    let cmd = vec!["server", "run", "--config", OBELISK_TOML_PATH];
+    let cmd = if litestream {
+        let cmd = cmd.join(" ");
+        vec![
+            "replicate".to_string(),
+            "--config".to_string(),
+            LITESTREAM_CONFIG_PATH.to_string(),
+            "--exec".to_string(),
+            format!("/obelisk/obelisk {cmd}"),
+        ]
+    } else {
+        cmd.into_iter().map(ToString::to_string).collect()
+    };
+
     let machine_id = activity_fly_http::machines::create(
         app_name,
         VM_NAME_FINAL,
@@ -328,13 +353,8 @@ fn start_final_vm(app_name: &str) -> Result<(), AppInitModifyError> {
             }),
             auto_destroy: None,
             init: Some(InitConfig {
-                cmd: Some(
-                    vec!["server", "run", "--config", "/volume/obelisk.toml"]
-                        .into_iter()
-                        .map(ToString::to_string)
-                        .collect(),
-                ),
-                entrypoint: None,
+                cmd: Some(cmd),
+                entrypoint,
                 exec: None,
                 kernel_args: None,
                 swap_size_mb: Some(256),
@@ -446,6 +466,7 @@ impl Guest for Component {
         org_slug: String,
         app_name: String,
         config: ObeliskConfig,
+        minio: bool,
     ) -> Result<(), AppInitModifyError> {
         // Check that we can serialize the configuration first.
         // A panic is translated to `app-init-modify-error::execution-failed`
@@ -453,8 +474,14 @@ impl Guest for Component {
         app_create(&org_slug, &app_name)?;
         // Allocate an IPv6 address first.
         allocate_ip(&app_name)?;
-        // Put `obelisk.toml`, downloaded WASM files and codegen cache on a new volume.
-        setup_volume(&app_name, &obelisk_toml)?;
+        let minio_machine_id = if minio {
+            let minio_machine_id = minio_start(&app_name)?;
+            minio_configure(&app_name, &minio_machine_id)?;
+            Some(minio_machine_id)
+        } else {
+            None
+        };
+        setup_volume(&app_name, &obelisk_toml, minio_machine_id.as_deref())?;
         Ok(())
     }
 
@@ -464,16 +491,8 @@ impl Guest for Component {
         Ok(())
     }
 
-    fn minio_start(app_name: String) -> Result<String, AppInitModifyError> {
-        minio_start(&app_name)
-    }
-
-    fn minio_configure(app_name: String, machine_id: String) -> Result<(), AppInitModifyError> {
-        minio_configure(&app_name, &machine_id)
-    }
-
-    fn start_final_vm(app_name: String) -> Result<(), AppInitModifyError> {
-        start_final_vm(&app_name)
+    fn start_final_vm(app_name: String, litestream: bool) -> Result<(), AppInitModifyError> {
+        start_final_vm(&app_name, litestream)
     }
 
     fn wait_for_health_check(
@@ -490,21 +509,17 @@ impl Guest for Component {
         config: ObeliskConfig,
         health_check_deadline_secs: u16,
         skip_cleanup_on_error: bool,
+        minio: bool,
     ) -> Result<(), AppInitError> {
         // Launch sub-workflows by using import.
         // In case of any error including a trap (panic), delete the whole app.
-        workflow_import::prepare(&org_slug, &app_name, &config)
+        workflow_import::prepare(&org_slug, &app_name, &config, minio)
             .map_err(|err| cleanup(&app_name, err, skip_cleanup_on_error))?;
 
         workflow_import::wait_for_secrets(&app_name, &config)
             .map_err(|err| cleanup(&app_name, err, skip_cleanup_on_error))?;
 
-        let minio_vm_id = workflow_import::minio_start(&app_name)
-            .map_err(|err| cleanup(&app_name, err, skip_cleanup_on_error))?;
-        workflow_import::minio_configure(&app_name, &minio_vm_id)
-            .map_err(|err| cleanup(&app_name, err, skip_cleanup_on_error))?;
-
-        workflow_import::start_final_vm(&app_name)
+        workflow_import::start_final_vm(&app_name, minio)
             .map_err(|err| cleanup(&app_name, err, skip_cleanup_on_error))?;
 
         workflow_import::wait_for_health_check(&app_name, health_check_deadline_secs)

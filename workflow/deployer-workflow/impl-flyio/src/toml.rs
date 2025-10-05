@@ -1,14 +1,17 @@
 use crate::generated::obelisk_flyio::workflow::types::ObeliskConfig;
-use crate::{HEALTHCHECK_INTERNAL_PORT, VOLUME_MOUNT_PATH, WEBHOOK_INTERNAL_PORT};
+use crate::{
+    HEALTHCHECK_INTERNAL_PORT, SQLITE_DIRECTORY_PATH, VOLUME_MOUNT_PATH, WEBHOOK_INTERNAL_PORT,
+};
 use anyhow::{Context, anyhow};
 use toml::Table; // Explicitly import Table
+
 pub(crate) fn serialize_obelisk_toml(config: &ObeliskConfig) -> Result<String, anyhow::Error> {
     const HEALTHCHECK_SERVER_NAME: &str = "healthcheck_server";
     const WEBHOOK_SERVER_NAME: &str = "webhook_server";
 
     let initial_toml_template = format!(
         r#"
-sqlite.directory = "{VOLUME_MOUNT_PATH}/obelisk-sqlite"
+sqlite.directory = "{SQLITE_DIRECTORY_PATH}"
 wasm.cache_directory = "{VOLUME_MOUNT_PATH}/wasm"
 wasm.codegen_cache.directory = "{VOLUME_MOUNT_PATH}/codegen"
 

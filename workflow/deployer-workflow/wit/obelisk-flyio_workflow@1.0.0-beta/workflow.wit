@@ -10,6 +10,7 @@ interface workflow {
         org-slug: string,
         app-name: string,
         config: obelisk-config,
+        minio: bool,
         ) -> result<_, app-init-modify-error>;
 
     /// Wait until secrets are populated or app is deleted.
@@ -18,20 +19,10 @@ interface workflow {
         config: obelisk-config,
         ) -> result<_, app-init-modify-error>;
 
-    /// Start the MinIO VM.
-    minio-start: func(
-        app-name: string,
-        ) -> result<string, app-init-modify-error>;
-
-    /// Initialize the litestream bucket.
-    minio-configure: func(
-        app-name: string,
-        machine-id: string,
-        ) -> result<_, app-init-modify-error>;
-
     /// Start the final VM.
     start-final-vm: func(
         app-name: string,
+        litestream: bool,
         ) -> result<_, app-init-modify-error>;
 
     /// Wait until health check passes, observing the deadline, or app is deleted.
@@ -44,12 +35,14 @@ interface workflow {
     /// If an error occurs during app configuration,
     /// the app is deleted, leaving the state as it was before this function was called.
     /// If the cleanup fails as well `cleanup-error` is raised.
+    // TODO: Add Obelisk version
     app-init: func(
         org-slug: string,
         app-name: string,
         config: obelisk-config,
         health-check-deadline-secs: u16,
         skip-cleanup-on-error: bool,
+        minio: bool,
         ) -> result<_, app-init-error>;
 }
 

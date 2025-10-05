@@ -45,6 +45,7 @@ cat <<EOF
     ]
 },
 60,
-$SKIP_CLEANUP
+$SKIP_CLEANUP,
+true
 ]
 EOF
