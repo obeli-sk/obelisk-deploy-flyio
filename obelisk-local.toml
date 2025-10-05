@@ -10,7 +10,7 @@ exec.lock_expiry.seconds = 15
 env_vars = ["FLY_API_TOKEN"]
 forward_stdout = "stderr"
 forward_stderr = "stderr"
-max_retries = 9
+max_retries = 6
 
 [[activity_wasm]]
 name = "http_activity"
