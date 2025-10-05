@@ -236,7 +236,10 @@ fn bail_on_app_deletion(app_name: &str) -> Result<(), AppInitModifyError> {
 fn wait_for_secrets(
     app_name: &str,
     required_secrets: HashSet<String>,
+    secrets_deadline_secs: u16,
 ) -> Result<(), AppInitModifyError> {
+    let start_secs = workflow_support::sleep(ScheduleAt::Now).seconds;
+
     while !required_secrets.is_empty() {
         let actual_secrets = match activity_fly_http::secrets::list(app_name) {
             Ok(actual_secrets) => actual_secrets
@@ -249,11 +252,14 @@ fn wait_for_secrets(
             }
         };
         if required_secrets.is_subset(&actual_secrets) {
+            // no need for waiting
             break;
         }
-        workflow_support::sleep(ScheduleAt::In(SchedulingDuration::Seconds(
-            SLEEP_BETWEEN_RETRIES.as_secs(),
-        )));
+        wait_or_fail(
+            start_secs,
+            secrets_deadline_secs,
+            AppInitModifyError::WaitingForSecretsTimedOut,
+        )?;
     }
     Ok(())
 }
@@ -398,6 +404,24 @@ fn start_final_vm(app_name: &str, litestream: bool) -> Result<(), AppInitModifyE
     Ok(())
 }
 
+fn wait_or_fail(
+    start_secs: u64,
+    deadline_secs: u16,
+    err: AppInitModifyError,
+) -> Result<(), AppInitModifyError> {
+    // Obtain current time
+    let current_secs = workflow_support::sleep(ScheduleAt::Now).seconds;
+
+    if current_secs + SLEEP_BETWEEN_RETRIES.as_secs() - start_secs > deadline_secs as u64 {
+        // bail out even if the timeout would be reached after the sleep.
+        return Err(err);
+    }
+    workflow_support::sleep(ScheduleAt::In(SchedulingDuration::Seconds(
+        SLEEP_BETWEEN_RETRIES.as_secs(),
+    )));
+    Ok(())
+}
+
 /// Sleep until the health check passes, observing the deadline, or the app is deleted.
 fn check_health(app_name: &str, health_check_deadline_secs: u16) -> Result<(), AppInitModifyError> {
     let start_secs = workflow_support::sleep(ScheduleAt::Now).seconds;
@@ -412,13 +436,11 @@ fn check_health(app_name: &str, health_check_deadline_secs: u16) -> Result<(), A
             return Ok(());
         }
         bail_on_app_deletion(app_name)?;
-        let current_secs = workflow_support::sleep(ScheduleAt::In(SchedulingDuration::Seconds(
-            SLEEP_BETWEEN_RETRIES.as_secs(),
-        )))
-        .seconds;
-        if current_secs - start_secs > health_check_deadline_secs as u64 {
-            return Err(AppInitModifyError::HealthCheckFailed);
-        }
+        wait_or_fail(
+            start_secs,
+            health_check_deadline_secs,
+            AppInitModifyError::HealthCheckFailed,
+        )?;
     }
 }
 
@@ -485,9 +507,13 @@ impl Guest for Component {
         Ok(())
     }
 
-    fn wait_for_secrets(app_name: String, config: ObeliskConfig) -> Result<(), AppInitModifyError> {
+    fn wait_for_secrets(
+        app_name: String,
+        config: ObeliskConfig,
+        secrets_deadline_secs: u16,
+    ) -> Result<(), AppInitModifyError> {
         let required_secrets = get_secret_keys(config);
-        wait_for_secrets(&app_name, required_secrets)?;
+        wait_for_secrets(&app_name, required_secrets, secrets_deadline_secs)?;
         Ok(())
     }
 
@@ -507,6 +533,7 @@ impl Guest for Component {
         org_slug: String,
         app_name: String,
         config: ObeliskConfig,
+        secrets_deadline_secs: u16,
         health_check_deadline_secs: u16,
         skip_cleanup_on_error: bool,
         minio: bool,
@@ -516,7 +543,7 @@ impl Guest for Component {
         workflow_import::prepare(&org_slug, &app_name, &config, minio)
             .map_err(|err| cleanup(&app_name, err, skip_cleanup_on_error))?;
 
-        workflow_import::wait_for_secrets(&app_name, &config)
+        workflow_import::wait_for_secrets(&app_name, &config, secrets_deadline_secs)
             .map_err(|err| cleanup(&app_name, err, skip_cleanup_on_error))?;
 
         workflow_import::start_final_vm(&app_name, minio)

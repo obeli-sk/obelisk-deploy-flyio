@@ -56,6 +56,7 @@ interface types {
         app-deleted,
         /// Cannot start or configure MinIO VM
         minio-vm-error(string),
+        waiting-for-secrets-timed-out,
         /// Cannot start the final VM
         final-vm-error(string),
         health-check-failed,

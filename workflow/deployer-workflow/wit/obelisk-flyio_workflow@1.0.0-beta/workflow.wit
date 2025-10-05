@@ -17,6 +17,7 @@ interface workflow {
     wait-for-secrets: func(
         app-name: string,
         config: obelisk-config,
+        secrets-deadline-secs: u16,
         ) -> result<_, app-init-modify-error>;
 
     /// Start the final VM.
@@ -40,8 +41,10 @@ interface workflow {
         org-slug: string,
         app-name: string,
         config: obelisk-config,
+        secrets-deadline-secs: u16,
         health-check-deadline-secs: u16,
         skip-cleanup-on-error: bool,
+        /// Should MinIO VM be instantiated and litestream configured?
         minio: bool,
         ) -> result<_, app-init-error>;
 }
