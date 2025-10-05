@@ -1,7 +1,18 @@
-# Obelisk deployment app for fly.io
+# Obelisk deployment app for Fly.io
 
 An [Obelisk](https://obeli.sk) [workflow](workflow/deployer-workflow/impl-flyio/src/lib.rs)
-that deploys an Obelisk app on fly.io.
+that deploys an Obelisk app on Fly.io.
+
+What it does:
+* Creates a new Fly.io app
+* Creates a VM with [MinIO](https://www.min.io) (for [litestream](https://litestream.io) testing)
+* Creates a volume, populates it using a temporary VM
+* Waits until the user submits application secrets
+* Deploys the Obelisk app including
+  * litestream replication to the MinIO VM
+  * a simple health check endpoint
+  * port forwarding to make the app's webhooks available
+* Waits until the health check is successful
 
 ## Setting up
 Set up environment variables based on [.envrc-example](.envrc-example).
@@ -32,8 +43,8 @@ Run the [`app-init`](workflow/deployer-workflow/wit/obelisk-flyio_workflow@1.0.0
 just app-init "$(./scripts/json-app-init-itself.sh)"
 ```
 
-While the workflow is running, push the secrets of your `.envrc` to the fly.io app -
-either using `fly` command, fly.io's dashboard or using following [script](scripts/secrets-send.sh):
+While the workflow is running, push the secrets of your `.envrc` to the Fly.io app -
+either using `fly` command, Fly.io's dashboard or using following [script](scripts/secrets-send.sh):
 
 ```sh
 ./scripts/secrets-send.sh .envrc
@@ -77,9 +88,9 @@ After testing delete the app and its resources:
 fly apps delete $FLY_APP_NAME
 ```
 
-#### Inception - deploying the app one more time using the deployer on fly.io
+#### Inception - deploying the app one more time using the deployer on Fly.io
 
-Pick a name for the inner app, we will use `inception`.
+Pick a name for the inner app, we will call it `inception`.
 
 Kill the local Obelisk server.
 
@@ -98,20 +109,18 @@ Now run `app-init` with a new fly app name:
 just app-init "$(FLY_APP_NAME=inception ./scripts/json-app-init-itself.sh)"
 ```
 
-Push the secret to the outer webhook:
+Push the secret to the inner app:
 ```sh
-URL="https://${FLY_APP_NAME}.fly.dev" FLY_APP_NAME=inception ./scripts/secrets-send.sh .envrc
+FLY_APP_NAME=inception ./scripts/secrets-send.sh .envrc
 ```
 
 To show the web console, proxy the port 8080 as well.
 
-Don't forget to delete the inner app afterwards:
-```sh
-fly apps delete inception
-```
+Don't forget to delete the inner and outer app afterwards.
 
 ### Stargazers
-Similar to the process above, but deploying the [Stargazers Demo app](https://github.com/obeli-sk/demo-stargazers) requires setting up, see the project's readme for details.
+Similar to the process above, but deploying the [Stargazers Demo app](https://github.com/obeli-sk/demo-stargazers)
+requires setting up, see the project's readme for details.
 
 Run the [`app-init`](workflow/deployer-workflow/wit/obelisk-flyio_workflow@1.0.0-beta/workflow.wit) function:
 ```sh
@@ -124,15 +133,15 @@ Push the secrets using stargazers' `.envrc` file.
 ```
 
 The follwing secrets are required by the app:
-* OPENAI_API_KEY
-* GITHUB_TOKEN
-* TURSO_TOKEN
-* TURSO_LOCATION
-* GITHUB_WEBHOOK_SECRET
+* `OPENAI_API_KEY`
+* `GITHUB_TOKEN`
+* `TURSO_TOKEN`
+* `TURSO_LOCATION`
+* `GITHUB_WEBHOOK_SECRET`
 
 # Using Fly.io activities directly
 
-Check out the [components-flyio](https://github.com/obeli-sk/components-flyio) repo on how to interact with Fly.io, including:
+Check out the [components-flyio](https://github.com/obeli-sk/components-flyio) repo on how to interact with Fly.io APIs, including:
 * Apps
 * Volumes
 * VMs
