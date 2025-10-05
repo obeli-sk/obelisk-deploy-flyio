@@ -15,4 +15,4 @@ serve:
 	obelisk server run --config ${CONFIG:-obelisk-local.toml}
 
 app-init params:
-	obelisk client execution submit -f .../workflow.app-init '{{params}}'
+	obelisk client execution submit -f obelisk-flyio:workflow/workflow@1.0.0-beta.app-init '{{params}}'

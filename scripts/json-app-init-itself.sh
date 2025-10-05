@@ -33,14 +33,6 @@ cat <<EOF
             "name": "obelisk_deployer_flyio",
             "location-oci": "docker.io/getobelisk/components_flyio_obelisk_deployer_flyio:2025-10-05-1@sha256:f2aacd7d90e2b8349d63a6c85f79904e99cfc754210250c24c356cb315089349"
         }
-    ],
-    "webhook-endpoint-list":[
-        {
-            "name": "webhook_fly_secrets_updater",
-            "location-oci": "docker.io/getobelisk/components_flyio_webhook_fly_secrets_updater:2025-10-05@sha256:3190ff8d059210d29b1a58f0fc509015360bb0e6bf34deba23b9c5a8c816c8cc",
-            "routes": [{ "methods": ["POST"], "path": "/" }],
-            "env-vars": ["FLY_API_TOKEN"]
-        }
     ]
 },
 $SECRETS_DEADLINE_SECS,

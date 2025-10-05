@@ -2,7 +2,6 @@
 set -euo pipefail
 
 SEND_ALL=${SEND_ALL:-false}
-URL=${URL:-localhost:9090}
 
 exec 3<&0 # save stdin as FD 3
 
@@ -21,10 +20,8 @@ while IFS= read -r line; do
     val="${val#\'}"
 
     echo "Found: $key"
-    if [ "$SEND_ALL" = "true" ] || { read -u 3 -p "Send to server? (y/n) " confirm && [[ "$confirm" == "y" ]]; }; then
-      curl --write-out "%{url_effective} %{http_code}\n" --fail $URL \
-        -H "Content-Type: application/json" \
-        -d '{"app_name":"'"$FLY_APP_NAME"'","name":"'"$key"'","value":"'"$val"'"}'
+    if [ "$SEND_ALL" = "true" ] || { read -u 3 -p "Send secret to app '$FLY_APP_NAME'? (y/n) " confirm && [[ "$confirm" == "y" ]]; }; then
+      fly secrets set --stage --app "$FLY_APP_NAME" "$key=$val"
     fi
   fi
 done < "$FILE"

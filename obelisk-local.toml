@@ -19,15 +19,6 @@ exec.lock_expiry.seconds = 5
 forward_stdout = "stderr"
 forward_stderr = "stderr"
 
-[[webhook_endpoint]]
-name = "webhook_fly_secrets_updater"
-location.oci = "docker.io/getobelisk/components_flyio_webhook_fly_secrets_updater:2025-10-05@sha256:3190ff8d059210d29b1a58f0fc509015360bb0e6bf34deba23b9c5a8c816c8cc"
-http_server = "webhook_server"
-routes = [{ methods = ["POST"], route = "/" }]
-env_vars = ["FLY_API_TOKEN"]
-forward_stdout = "stderr"
-forward_stderr = "stderr"
-
 [[workflow]]
 name = "obelisk_deployer_flyio"
 location.path = "${OBELISK_TOML_DIR}/target/wasm32-unknown-unknown/release_workflow/obelisk_deployer_flyio.wasm"

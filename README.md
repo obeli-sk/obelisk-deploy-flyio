@@ -39,8 +39,8 @@ either using `fly` command, fly.io's dashboard or using following [script](scrip
 ./scripts/secrets-send.sh .envrc
 ```
 
-The following secrets are required by the app:
-* FLY_API_TOKEN
+The following secret is required by the app:
+* `FLY_API_TOKEN`
 
 When all required secrets are present, the workflow will continue with creating the final VM and health checks.
 
