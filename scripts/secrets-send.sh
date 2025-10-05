@@ -2,6 +2,7 @@
 set -euo pipefail
 
 SEND_ALL=${SEND_ALL:-false}
+URL=${URL:-localhost:9090}
 
 exec 3<&0 # save stdin as FD 3
 
@@ -21,7 +22,7 @@ while IFS= read -r line; do
 
     echo "Found: $key"
     if [ "$SEND_ALL" = "true" ] || { read -u 3 -p "Send to server? (y/n) " confirm && [[ "$confirm" == "y" ]]; }; then
-      curl --write-out "%{url_effective} %{http_code}\n" --fail localhost:9090/ \
+      curl --write-out "%{url_effective} %{http_code}\n" --fail $URL \
         -H "Content-Type: application/json" \
         -d '{"app_name":"'"$FLY_APP_NAME"'","name":"'"$key"'","value":"'"$val"'"}'
     fi

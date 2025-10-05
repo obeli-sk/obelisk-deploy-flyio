@@ -1,6 +1,3 @@
-gen-obelisk-ext:
-	scripts/obelisk-generate-extensions.sh
-
 clean:
 	cargo clean
 
@@ -17,14 +14,5 @@ verify:
 serve:
 	obelisk server run --config ${CONFIG:-obelisk-local.toml}
 
-app-init:
-	obelisk client execution submit -f .../workflow.app-init "$(./scripts/json-app-init-stargazers.sh)"
-
-app-init-no-cleanup:
-	SKIP_CLEANUP=true obelisk client execution submit -f .../workflow.app-init "$(./scripts/json-app-init-stargazers.sh)"
-
-secrets:
-	./scripts/secrets-send.sh ../stargazers/.envrc
-
-secrets-y:
-	SEND_ALL=true ./scripts/secrets-send.sh ../stargazers/.envrc
+app-init params:
+	obelisk client execution submit -f .../workflow.app-init '{{params}}'

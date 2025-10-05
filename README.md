@@ -1,10 +1,21 @@
-# Obelisk deployment tool - fly.io
+# Obelisk deployment app for fly.io
 
 An [Obelisk](https://obeli.sk) [workflow](workflow/deployer-workflow/impl-flyio/src/lib.rs)
-that deploys the [Stargazers Demo app](https://github.com/obeli-sk/demo-stargazers) on fly.io.
+that deploys an Obelisk app on fly.io.
 
-## Usage
+## Setting up
 Set up environment variables based on [.envrc-example](.envrc-example).
+
+Set up dependencies based on [dev-deps.txt](dev-deps.txt).
+
+If `direnv` is available:
+```sh
+cp .envrc-example .envrc
+$EDITOR .envrc # change FLY_APP_NAME and FLY_API_TOKEN
+direnv allow
+```
+
+## Starting the server
 
 Start Obelisk server
 ```sh
@@ -12,20 +23,27 @@ just build serve
 # or just `obelisk server run -c obelisk-oci.toml` without building the WASM components locally.
 ```
 
+## Starting the workflow
+
+### Deploying the deployment app itself
+
 Run the [`app-init`](workflow/deployer-workflow/wit/obelisk-flyio_workflow@1.0.0-beta/workflow.wit) function:
 ```sh
-just app-init
+just app-init "$(./scripts/json-app-init-itself.sh)"
 ```
 
-While the workflow is running, push the [stargazers secrets](https://github.com/obeli-sk/demo-stargazers/blob/main/.envrc-example) to the fly.io app -
+While the workflow is running, push the secrets of your `.envrc` to the fly.io app -
 either using `fly` command, fly.io's dashboard or using following [script](scripts/secrets-send.sh):
 
-Point the script at stargazers' `.envrc` file.
 ```sh
-./scripts/secrets-send.sh ../stargazers/.envrc
+./scripts/secrets-send.sh .envrc
 ```
 
-When all required secrets are present, the `app-init` workflow will continue with creating the final VM and health checks.
+The following secrets are required by the app:
+* FLY_API_TOKEN
+
+When all required secrets are present, the workflow will continue with creating the final VM and health checks.
+
 
 Sample output:
 ```
@@ -59,28 +77,63 @@ After testing delete the app and its resources:
 fly apps delete $FLY_APP_NAME
 ```
 
-## Using Fly.io activities directly
+#### Inception - deploying the app one more time using the deployer on fly.io
+
+Pick a name for the inner app, we will use `inception`.
+
+Kill the local Obelisk server.
+
+Proxy the gRPC port 5005 of the `obelisk` VM:
+```sh
+flyctl proxy 5005 $(fly machine list | grep obelisk | awk '{print $6}')
+```
+
+Verify the port tunneling works:
+```sh
+obelisk client component list
+```
+
+Now run `app-init` with a new fly app name:
+```sh
+just app-init "$(FLY_APP_NAME=inception ./scripts/json-app-init-itself.sh)"
+```
+
+Push the secret to the outer webhook:
+```sh
+URL="https://${FLY_APP_NAME}.fly.dev" FLY_APP_NAME=inception ./scripts/secrets-send.sh .envrc
+```
+
+To show the web console, proxy the port 8080 as well.
+
+Don't forget to delete the inner app afterwards:
+```sh
+fly apps delete inception
+```
+
+### Stargazers
+Similar to the process above, but deploying the [Stargazers Demo app](https://github.com/obeli-sk/demo-stargazers) requires setting up, see the project's readme for details.
+
+Run the [`app-init`](workflow/deployer-workflow/wit/obelisk-flyio_workflow@1.0.0-beta/workflow.wit) function:
+```sh
+just app-init "$(./scripts/json-app-init-stargazers.sh)"
+```
+
+Push the secrets using stargazers' `.envrc` file.
+```sh
+./scripts/secrets-send.sh ../stargazers/.envrc
+```
+
+The follwing secrets are required by the app:
+* OPENAI_API_KEY
+* GITHUB_TOKEN
+* TURSO_TOKEN
+* TURSO_LOCATION
+* GITHUB_WEBHOOK_SECRET
+
+# Using Fly.io activities directly
 
 Check out the [components-flyio](https://github.com/obeli-sk/components-flyio) repo on how to interact with Fly.io, including:
 * Apps
 * Volumes
 * VMs
 * Secrets
-
-Launch a VM:
-```sh
-export VOLUME_ID=..
-MACHINE_ID=$(obelisk client execution submit -f --json obelisk-flyio:activity-fly-http/machines@1.0.0-beta.create -- \
-\"$FLY_APP_NAME\" \"$FLY_MACHINE_NAME\" "$(./scripts/json-machine-create.sh)" \"$FLY_REGION\" \
-| jq -r '.[-1].ok')
-```
-
-Execute a process:
-```sh
-obelisk client execution submit -f \
-obelisk-flyio:activity-fly-http/machines@1.0.0-beta.exec \
--- \
-\"$FLY_APP_NAME\" \
-\"$MACHINE_ID\" \
-'["obelisk", "server", "verify", "-c", "/volume/obelisk.toml"]'
-```
