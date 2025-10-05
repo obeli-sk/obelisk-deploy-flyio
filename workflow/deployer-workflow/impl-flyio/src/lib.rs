@@ -307,7 +307,6 @@ fn minio_start(app_name: &str) -> Result<String, AppInitModifyError> {
         Some(REGION),
     )
     .map_err(AppInitModifyError::MinioVmError)?;
-    wait_until_started(app_name, &machine_id)?;
     Ok(machine_id)
 }
 
@@ -507,6 +506,8 @@ impl Guest for Component {
         allocate_ip(&app_name)?;
         let minio_machine_id = if minio {
             let minio_machine_id = minio_start(&app_name)?;
+            // TODO: MinIO configuration can be executed in parallel with `setup_volume`
+            wait_until_started(&app_name, &minio_machine_id)?;
             minio_configure(&app_name, &minio_machine_id)?;
             Some(minio_machine_id)
         } else {
