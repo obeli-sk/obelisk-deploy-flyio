@@ -6,14 +6,14 @@ interface workflow {
   use obelisk:types/execution@3.0.0.{execution-id};
   use obelisk:types/time@3.0.0.{schedule-at};
 
-  prepare-schedule: func(schedule-at: schedule-at, org-slug: string, app-name: string, config: obelisk-config, minio: bool) -> execution-id;
+  prepare-schedule: func(schedule-at: schedule-at, org-slug: string, app-name: string, obelisk-version: string, config: obelisk-config, minio: bool) -> execution-id;
 
-  wait-for-secrets-schedule: func(schedule-at: schedule-at, app-name: string, config: obelisk-config) -> execution-id;
+  wait-for-secrets-schedule: func(schedule-at: schedule-at, app-name: string, config: obelisk-config, secrets-deadline-secs: u16) -> execution-id;
 
-  start-final-vm-schedule: func(schedule-at: schedule-at, app-name: string, litestream: bool) -> execution-id;
+  start-final-vm-schedule: func(schedule-at: schedule-at, app-name: string, obelisk-version: string, litestream: bool) -> execution-id;
 
   wait-for-health-check-schedule: func(schedule-at: schedule-at, app-name: string, health-check-deadline-secs: u16) -> execution-id;
 
-  app-init-schedule: func(schedule-at: schedule-at, org-slug: string, app-name: string, config: obelisk-config, health-check-deadline-secs: u16, skip-cleanup-on-error: bool, minio: bool) -> execution-id;
+  app-init-schedule: func(schedule-at: schedule-at, org-slug: string, app-name: string, obelisk-version: string, config: obelisk-config, secrets-deadline-secs: u16, health-check-deadline-secs: u16, skip-cleanup-on-error: bool, minio: bool) -> execution-id;
 }
 
