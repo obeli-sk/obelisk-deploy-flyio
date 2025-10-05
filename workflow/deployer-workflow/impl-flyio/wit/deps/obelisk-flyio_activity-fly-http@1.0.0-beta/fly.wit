@@ -215,6 +215,8 @@ interface machines {
     delete: func(app-name: string, machine-id: machine-id, force: bool) -> result<_, string>;
 
     exec: func(app-name: string, machine-id: machine-id, command: list<string>) -> result<exec-response, string>;
+
+    exec-check-success: func(app-name: string, machine-id: machine-id, command: list<string>) -> result<exec-response, string>;
 }
 
 /// [App Secrets API](https://docs.machines.dev/#tag/secrets/get/apps/{app_name}/secrets)
