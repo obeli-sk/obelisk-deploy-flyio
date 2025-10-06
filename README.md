@@ -114,13 +114,20 @@ Push the secret to the inner app:
 FLY_APP_NAME=inception ./scripts/secrets-send.sh .envrc
 ```
 
-To show the web console, proxy the port 8080 as well.
+To access the web console, proxy the port 8080 as well.
 
 Don't forget to delete the inner and outer app afterwards.
 
 ### Stargazers
 Similar to the process above, but deploying the [Stargazers Demo app](https://github.com/obeli-sk/demo-stargazers)
-requires setting up, see the project's readme for details.
+requires setting up secrets to various API providers, see the project's readme for details.
+
+The follwing secrets are required by the app:
+* `OPENAI_API_KEY`
+* `GITHUB_TOKEN`
+* `TURSO_TOKEN`
+* `TURSO_LOCATION`
+* `GITHUB_WEBHOOK_SECRET`
 
 Run the [`app-init`](workflow/deployer-workflow/wit/obelisk-flyio_workflow@1.0.0-beta/workflow.wit) function:
 ```sh
@@ -131,13 +138,6 @@ Push the secrets using stargazers' `.envrc` file.
 ```sh
 ./scripts/secrets-send.sh ../stargazers/.envrc
 ```
-
-The follwing secrets are required by the app:
-* `OPENAI_API_KEY`
-* `GITHUB_TOKEN`
-* `TURSO_TOKEN`
-* `TURSO_LOCATION`
-* `GITHUB_WEBHOOK_SECRET`
 
 # Using Fly.io activities directly
 
