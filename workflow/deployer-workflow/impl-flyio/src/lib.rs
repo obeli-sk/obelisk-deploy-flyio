@@ -242,9 +242,11 @@ fn wait_for_secrets(
     required_secrets: HashSet<String>,
     secrets_deadline_secs: u16,
 ) -> Result<(), AppInitModifyError> {
+    if required_secrets.is_empty() {
+        return Ok(());
+    }
     let start_secs = workflow_support::sleep(ScheduleAt::Now).seconds;
-
-    while !required_secrets.is_empty() {
+    loop {
         let actual_secrets = match activity_fly_http::secrets::list(app_name) {
             Ok(actual_secrets) => actual_secrets
                 .into_iter()
@@ -256,8 +258,7 @@ fn wait_for_secrets(
             }
         };
         if required_secrets.is_subset(&actual_secrets) {
-            // no need for waiting
-            break;
+            return Ok(());
         }
         wait_or_fail(
             start_secs,
@@ -265,7 +266,6 @@ fn wait_for_secrets(
             AppInitModifyError::WaitingForSecretsTimedOut,
         )?;
     }
-    Ok(())
 }
 
 // Testing instance of MinIO
