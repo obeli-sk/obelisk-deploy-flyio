@@ -86,25 +86,30 @@ fn allocate_ip(app_name: &str) -> Result<(), AppInitModifyError> {
     Ok(())
 }
 
-fn wait_until_started(app_name: &str, machine_id: &str) -> Result<(), AppInitModifyError> {
-    for _ in 0..10 {
-        let machine = activity_fly_http::machines::get(app_name, machine_id)
-            .map_err(AppInitModifyError::TempVmError)?;
+fn wait_until_started(
+    app_name: &str,
+    machine_id: &str,
+    vm_error: fn(String) -> AppInitModifyError,
+    vm_startup_deadline_secs: u16,
+) -> Result<(), AppInitModifyError> {
+    let start_secs = workflow_support::sleep(ScheduleAt::Now).seconds;
+    loop {
+        let machine = activity_fly_http::machines::get(app_name, machine_id).map_err(vm_error)?;
         let state = machine
             .ok_or_else(|| {
-                AppInitModifyError::TempVmError(
-                    "cannot find temp VM that was created successfuly".to_string(),
-                )
+                vm_error("cannot find VM that was just created successfuly".to_string())
             })?
             .state;
         if state == MachineState::Started {
-            break;
+            return Ok(());
         }
+        wait_or_fail(start_secs, vm_startup_deadline_secs, || {
+            vm_error("timed out waiting for 'started' state".to_string())
+        })?;
         workflow_support::sleep(ScheduleAt::In(SchedulingDuration::Seconds(
             SLEEP_BETWEEN_RETRIES.as_secs(),
         )));
     }
-    Ok(())
 }
 
 // Put `obelisk.toml`, downloaded WASM files and codegen cache on a new volume.
@@ -114,6 +119,7 @@ fn setup_volume(
     obelisk_version: &str,
     obelisk_toml: &str,
     minio_machine_id: Option<&str>,
+    vm_startup_deadline_secs: u16,
 ) -> Result<(), AppInitModifyError> {
     // Create a volume
     activity_fly_http::volumes::create(
@@ -164,7 +170,12 @@ fn setup_volume(
     )
     .map_err(AppInitModifyError::TempVmError)?;
 
-    wait_until_started(app_name, &temp_vm_id)?;
+    wait_until_started(
+        app_name,
+        &temp_vm_id,
+        AppInitModifyError::TempVmError,
+        vm_startup_deadline_secs,
+    )?;
 
     let write_file = |file_name: &str, content: &str| {
         activity_fly_http::machines::exec_check_success(
@@ -260,11 +271,9 @@ fn wait_for_secrets(
         if required_secrets.is_subset(&actual_secrets) {
             return Ok(());
         }
-        wait_or_fail(
-            start_secs,
-            secrets_deadline_secs,
-            AppInitModifyError::WaitingForSecretsTimedOut,
-        )?;
+        wait_or_fail(start_secs, secrets_deadline_secs, || {
+            AppInitModifyError::WaitingForSecretsTimedOut
+        })?;
     }
 }
 
@@ -333,6 +342,7 @@ fn start_final_vm(
     app_name: &str,
     obelisk_version: &str,
     litestream: bool,
+    vm_startup_deadline_secs: u16,
 ) -> Result<(), AppInitModifyError> {
     let entrypoint = if litestream {
         Some(vec!["/usr/bin/litestream".to_string()])
@@ -407,21 +417,26 @@ fn start_final_vm(
         Some(REGION),
     )
     .map_err(AppInitModifyError::FinalVmError)?;
-    wait_until_started(app_name, &machine_id)?;
+    wait_until_started(
+        app_name,
+        &machine_id,
+        AppInitModifyError::FinalVmError,
+        vm_startup_deadline_secs,
+    )?;
     Ok(())
 }
 
 fn wait_or_fail(
     start_secs: u64,
     deadline_secs: u16,
-    err: AppInitModifyError,
+    err: impl Fn() -> AppInitModifyError,
 ) -> Result<(), AppInitModifyError> {
     // Obtain current time
     let current_secs = workflow_support::sleep(ScheduleAt::Now).seconds;
 
     if current_secs + SLEEP_BETWEEN_RETRIES.as_secs() - start_secs > deadline_secs as u64 {
         // bail out even if the timeout would be reached after the sleep.
-        return Err(err);
+        return Err(err());
     }
     workflow_support::sleep(ScheduleAt::In(SchedulingDuration::Seconds(
         SLEEP_BETWEEN_RETRIES.as_secs(),
@@ -443,11 +458,9 @@ fn check_health(app_name: &str, health_check_deadline_secs: u16) -> Result<(), A
             return Ok(());
         }
         bail_on_app_deletion(app_name)?;
-        wait_or_fail(
-            start_secs,
-            health_check_deadline_secs,
-            AppInitModifyError::HealthCheckFailed,
-        )?;
+        wait_or_fail(start_secs, health_check_deadline_secs, || {
+            AppInitModifyError::HealthCheckFailed
+        })?;
     }
 }
 
@@ -497,6 +510,7 @@ impl Guest for Component {
         obelisk_version: String,
         config: ObeliskConfig,
         minio: bool,
+        vm_startup_deadline_secs: u16,
     ) -> Result<(), AppInitModifyError> {
         // Check that we can serialize the configuration first.
         // A panic is translated to `app-init-modify-error::execution-failed`
@@ -507,7 +521,12 @@ impl Guest for Component {
         let minio_machine_id = if minio {
             let minio_machine_id = minio_start(&app_name)?;
             // TODO: MinIO configuration can be executed in parallel with `setup_volume`
-            wait_until_started(&app_name, &minio_machine_id)?;
+            wait_until_started(
+                &app_name,
+                &minio_machine_id,
+                AppInitModifyError::MinioVmError,
+                vm_startup_deadline_secs,
+            )?;
             minio_configure(&app_name, &minio_machine_id)?;
             Some(minio_machine_id)
         } else {
@@ -518,6 +537,7 @@ impl Guest for Component {
             &obelisk_version,
             &obelisk_toml,
             minio_machine_id.as_deref(),
+            vm_startup_deadline_secs,
         )?;
         Ok(())
     }
@@ -536,8 +556,14 @@ impl Guest for Component {
         app_name: String,
         obelisk_version: String,
         litestream: bool,
+        vm_startup_deadline_secs: u16,
     ) -> Result<(), AppInitModifyError> {
-        start_final_vm(&app_name, &obelisk_version, litestream)
+        start_final_vm(
+            &app_name,
+            &obelisk_version,
+            litestream,
+            vm_startup_deadline_secs,
+        )
     }
 
     fn wait_for_health_check(
@@ -557,17 +583,30 @@ impl Guest for Component {
         health_check_deadline_secs: u16,
         skip_cleanup_on_error: bool,
         minio: bool,
+        vm_startup_deadline_secs: u16,
     ) -> Result<(), AppInitError> {
         // Launch sub-workflows by using import.
         // In case of any error including a trap (panic), delete the whole app.
-        workflow_import::prepare(&org_slug, &app_name, &obelisk_version, &config, minio)
-            .map_err(|err| cleanup(&app_name, err, skip_cleanup_on_error))?;
+        workflow_import::prepare(
+            &org_slug,
+            &app_name,
+            &obelisk_version,
+            &config,
+            minio,
+            vm_startup_deadline_secs,
+        )
+        .map_err(|err| cleanup(&app_name, err, skip_cleanup_on_error))?;
 
         workflow_import::wait_for_secrets(&app_name, &config, secrets_deadline_secs)
             .map_err(|err| cleanup(&app_name, err, skip_cleanup_on_error))?;
 
-        workflow_import::start_final_vm(&app_name, &obelisk_version, minio)
-            .map_err(|err| cleanup(&app_name, err, skip_cleanup_on_error))?;
+        workflow_import::start_final_vm(
+            &app_name,
+            &obelisk_version,
+            minio,
+            vm_startup_deadline_secs,
+        )
+        .map_err(|err| cleanup(&app_name, err, skip_cleanup_on_error))?;
 
         workflow_import::wait_for_health_check(&app_name, health_check_deadline_secs)
             .map_err(|err| cleanup(&app_name, err, skip_cleanup_on_error))?;
