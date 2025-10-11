@@ -507,7 +507,6 @@ impl Guest for Component {
     fn prepare(
         org_slug: String,
         app_name: String,
-        obelisk_version: String,
         config: ObeliskConfig,
         minio: bool,
         vm_startup_deadline_secs: u16,
@@ -534,7 +533,7 @@ impl Guest for Component {
         };
         setup_volume(
             &app_name,
-            &obelisk_version,
+            &config.obelisk_version,
             &obelisk_toml,
             minio_machine_id.as_deref(),
             vm_startup_deadline_secs,
@@ -577,7 +576,6 @@ impl Guest for Component {
     fn app_init(
         org_slug: String,
         app_name: String,
-        obelisk_version: String,
         config: ObeliskConfig,
         secrets_deadline_secs: u16,
         health_check_deadline_secs: u16,
@@ -587,10 +585,10 @@ impl Guest for Component {
     ) -> Result<(), AppInitError> {
         // Launch sub-workflows by using import.
         // In case of any error including a trap (panic), delete the whole app.
+        let obelisk_version = config.obelisk_version.clone();
         workflow_import::prepare(
             &org_slug,
             &app_name,
-            &obelisk_version,
             &config,
             minio,
             vm_startup_deadline_secs,

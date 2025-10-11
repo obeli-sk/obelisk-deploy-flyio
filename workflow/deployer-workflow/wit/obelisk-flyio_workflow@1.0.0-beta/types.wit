@@ -6,6 +6,7 @@ interface types {
     type env-var = string;
 
     record obelisk-config {
+        obelisk-version: string,
         activity-wasm-list: option<list<activity-wasm>>,
         workflow-list: option<list<workflow>>,
         webhook-endpoint-list: option<list<webhook-endpoint>>,

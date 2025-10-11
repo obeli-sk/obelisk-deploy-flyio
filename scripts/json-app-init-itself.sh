@@ -13,8 +13,8 @@ cat <<EOF
 [
 "$FLY_ORG_SLUG",
 "$FLY_APP_NAME",
-"$OBELISK_VERSION",
 {
+    "obelisk-version": "$OBELISK_VERSION",
     "activity-wasm-list":[
         {
             "name": "activity_fly_http",

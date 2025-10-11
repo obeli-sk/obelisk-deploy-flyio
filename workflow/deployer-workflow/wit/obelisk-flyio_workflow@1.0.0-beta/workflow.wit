@@ -9,7 +9,6 @@ interface workflow {
     prepare: func(
         org-slug: string,
         app-name: string,
-        obelisk-version: string,
         config: obelisk-config,
         minio: bool,
         vm-startup-deadline-secs: u16,
@@ -43,7 +42,6 @@ interface workflow {
     app-init: func(
         org-slug: string,
         app-name: string,
-        obelisk-version: string,
         config: obelisk-config,
         secrets-deadline-secs: u16,
         health-check-deadline-secs: u16,

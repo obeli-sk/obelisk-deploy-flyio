@@ -207,6 +207,7 @@ mod tests {
     #[test]
     fn serialize_obelisk_toml_should_produce_correct_config() {
         let config = ObeliskConfig {
+            obelisk_version: "1.2.3".to_string(),
             activity_wasm_list: Some(vec![
                 ActivityWasm {
                     name: "stargazers_activity_llm_chatgpt".to_string(),
