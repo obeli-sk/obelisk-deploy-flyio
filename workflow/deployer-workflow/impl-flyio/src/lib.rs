@@ -23,7 +23,7 @@ use generated::{
             volumes::VolumeCreateRequest,
         },
         workflow::{
-            types::{AppCleanupFailed, AppInitModifyError},
+            types::{AppCleanupFailed, AppInitConfig, AppInitModifyError},
             workflow::{self as workflow_import, AppInitError, ObeliskConfig},
         },
     },
@@ -576,38 +576,38 @@ impl Guest for Component {
     fn app_init(
         org_slug: String,
         app_name: String,
-        config: ObeliskConfig,
-        secrets_deadline_secs: u16,
-        health_check_deadline_secs: u16,
-        skip_cleanup_on_error: bool,
-        minio: bool,
-        vm_startup_deadline_secs: u16,
+        obelisk_config: ObeliskConfig,
+        init_config: AppInitConfig,
     ) -> Result<(), AppInitError> {
         // Launch sub-workflows by using import.
         // In case of any error including a trap (panic), delete the whole app.
-        let obelisk_version = config.obelisk_version.clone();
+        let obelisk_version = obelisk_config.obelisk_version.clone();
         workflow_import::prepare(
             &org_slug,
             &app_name,
-            &config,
-            minio,
-            vm_startup_deadline_secs,
+            &obelisk_config,
+            init_config.minio,
+            init_config.vm_startup_deadline_secs,
         )
-        .map_err(|err| cleanup(&app_name, err, skip_cleanup_on_error))?;
+        .map_err(|err| cleanup(&app_name, err, init_config.skip_cleanup_on_error))?;
 
-        workflow_import::wait_for_secrets(&app_name, &config, secrets_deadline_secs)
-            .map_err(|err| cleanup(&app_name, err, skip_cleanup_on_error))?;
+        workflow_import::wait_for_secrets(
+            &app_name,
+            &obelisk_config,
+            init_config.secrets_deadline_secs,
+        )
+        .map_err(|err| cleanup(&app_name, err, init_config.skip_cleanup_on_error))?;
 
         workflow_import::start_final_vm(
             &app_name,
             &obelisk_version,
-            minio,
-            vm_startup_deadline_secs,
+            init_config.minio,
+            init_config.vm_startup_deadline_secs,
         )
-        .map_err(|err| cleanup(&app_name, err, skip_cleanup_on_error))?;
+        .map_err(|err| cleanup(&app_name, err, init_config.skip_cleanup_on_error))?;
 
-        workflow_import::wait_for_health_check(&app_name, health_check_deadline_secs)
-            .map_err(|err| cleanup(&app_name, err, skip_cleanup_on_error))?;
+        workflow_import::wait_for_health_check(&app_name, init_config.health_check_deadline_secs)
+            .map_err(|err| cleanup(&app_name, err, init_config.skip_cleanup_on_error))?;
 
         Ok(())
     }

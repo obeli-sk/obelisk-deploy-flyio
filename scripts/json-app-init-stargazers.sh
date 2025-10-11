@@ -50,10 +50,12 @@ cat <<EOF
         }
     ]
 },
-$SECRETS_DEADLINE_SECS,
-$HEALTH_CHECK_DEADLINE_SECS,
-$SKIP_CLEANUP,
-$MINIO,
-$VM_STARTUP_DEADLINE_SECS
+{
+    "secrets-deadline-secs": $SECRETS_DEADLINE_SECS,
+    "health-check-deadline-secs": $HEALTH_CHECK_DEADLINE_SECS,
+    "skip-cleanup-on-error": $SKIP_CLEANUP,
+    "minio": $MINIO,
+    "vm-startup-deadline-secs": $VM_STARTUP_DEADLINE_SECS
+}
 ]
 EOF

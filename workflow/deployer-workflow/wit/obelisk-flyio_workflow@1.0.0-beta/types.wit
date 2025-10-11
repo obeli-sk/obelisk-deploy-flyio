@@ -37,6 +37,15 @@ interface types {
         path: string,
     }
 
+    record app-init-config {
+        secrets-deadline-secs: u16,
+        health-check-deadline-secs: u16,
+        skip-cleanup-on-error: bool,
+        /// Should MinIO VM be instantiated and litestream configured?
+        minio: bool,
+        vm-startup-deadline-secs: u16,
+    }
+
     variant app-init-modify-error {
         /// Cannot check the app name, no cleanup is required.
         app-name-get-error,
