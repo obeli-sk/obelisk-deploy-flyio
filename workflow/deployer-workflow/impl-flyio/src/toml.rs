@@ -3,11 +3,29 @@ use crate::{
     HEALTHCHECK_INTERNAL_PORT, SQLITE_DIRECTORY_PATH, VOLUME_MOUNT_PATH, WEBHOOK_INTERNAL_PORT,
 };
 use anyhow::{Context, anyhow};
-use toml::Table; // Explicitly import Table
+use toml::Table;
 
 pub(crate) fn serialize_obelisk_toml(config: &ObeliskConfig) -> Result<String, anyhow::Error> {
     const HEALTHCHECK_SERVER_NAME: &str = "healthcheck_server";
     const WEBHOOK_SERVER_NAME: &str = "webhook_server";
+    const OBELISK_OCI_TOML: &str = include_str!("../../../../obelisk-oci.toml");
+
+    let webhook_healthcheck_ock = {
+        let val: toml::Value = toml::from_str(OBELISK_OCI_TOML).expect("Invalid TOML");
+
+        let endpoint = val["webhook_endpoint"]
+            .as_array()
+            .and_then(|arr| {
+                arr.iter()
+                    .find(|item| item["name"].as_str() == Some("webhook_healthcheck"))
+            })
+            .expect("endpoint not found");
+
+        endpoint["location"]["oci"]
+            .as_str()
+            .expect("missing location.oci")
+            .to_string()
+    };
 
     let initial_toml_template = format!(
         r#"
@@ -33,7 +51,7 @@ listening_addr = "0.0.0.0:{HEALTHCHECK_INTERNAL_PORT}"
 
 [[webhook_endpoint]]
 name = "webhook_healthcheck"
-location.oci = "docker.io/getobelisk/components_flyio_webhook_healthcheck:2025-10-01@sha256:6fbc11b80b441ae6e642327b1ec0ceba85b2868d85dbce2d99d0d7b14a525c8c"
+location.oci = "{webhook_healthcheck_ock}"
 http_server = "{HEALTHCHECK_SERVER_NAME}"
 routes = [""]
 
