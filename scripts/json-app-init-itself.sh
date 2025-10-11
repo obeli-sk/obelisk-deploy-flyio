@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+set -exuo pipefail
+cd "$(dirname "$0")/.."
+
 # Prints JSON containing arguments to `app-init` function.
 
 OBELISK_VERSION=${OBELISK_VERSION:-$(obelisk -v | cut -d ' ' -f 2)}
@@ -8,6 +11,8 @@ HEALTH_CHECK_DEADLINE_SECS=${HEALTH_CHECK_DEADLINE_SECS:-120}
 SKIP_CLEANUP=${SKIP_CLEANUP:-false}
 MINIO=${MINIO:-true}
 VM_STARTUP_DEADLINE_SECS=${VM_STARTUP_DEADLINE_SECS:-30}
+
+WORKFLOW_OCI=$(awk '/name *= *"obelisk_deployer_flyio"/ {getline; match($0, /"([^"]+)"/, a); print a[1]}' obelisk-oci.toml)
 
 cat <<EOF
 [
@@ -32,7 +37,7 @@ cat <<EOF
     "workflow-list":[
         {
             "name": "obelisk_deployer_flyio",
-            "location-oci": "docker.io/getobelisk/components_flyio_obelisk_deployer_flyio:2025-10-05-1@sha256:f2aacd7d90e2b8349d63a6c85f79904e99cfc754210250c24c356cb315089349"
+            "location-oci": "$WORKFLOW_OCI"
         }
     ]
 },
