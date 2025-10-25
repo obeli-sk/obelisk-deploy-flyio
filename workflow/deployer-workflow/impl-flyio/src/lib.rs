@@ -334,7 +334,7 @@ fn start_final_vm(
     vm_startup_deadline_secs: u16,
 ) -> Result<(), AppInitModifyError> {
     let entrypoint = if litestream {
-        Some(vec!["/usr/bin/litestream".to_string()])
+        Some(vec!["/usr/local/bin/litestream".to_string()])
     } else {
         None
     };
