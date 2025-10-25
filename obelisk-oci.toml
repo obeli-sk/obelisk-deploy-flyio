@@ -21,13 +21,13 @@ forward_stderr = "stderr"
 
 [[workflow]]
 name = "obelisk_deployer_flyio"
-location.oci = "docker.io/getobelisk/components_flyio_obelisk_deployer_flyio:2025-10-11@sha256:fc0efc7766f7ef3110b55c16df00a74db26aa6f0d9dcf9ffe7bed22d992d753d"
+location.oci = "docker.io/getobelisk/components_flyio_obelisk_deployer_flyio:2025-10-25@sha256:d4396c0d016dc74cb0349ee5d64e9ac24c51d861691d7e4348c740d3afe13df0"
 backtrace.sources = { ".../src/lib.rs" = "${OBELISK_TOML_DIR}/workflow/deployer-workflow/impl-flyio/src/lib.rs" }
 
 # This webhook is here only for `push-components.sh`
 [[webhook_endpoint]]
 name = "webhook_healthcheck"
-location.oci = "docker.io/getobelisk/components_flyio_webhook_healthcheck:2025-10-11@sha256:4538c5b3f1bc2c207ee8852bc2cc40f903205d2edfc19b718fd52f3bbcf6768b"
+location.oci = "docker.io/getobelisk/components_flyio_webhook_healthcheck:2025-10-25@sha256:0e3688c3e80363851369f49b57da54ecaf13654d3066a08e17d8a3156ac5f606"
 http_server = "webhook_server"
 routes = ["/obeliskhealthcheck"]
 

@@ -10,7 +10,7 @@ pub(crate) fn serialize_obelisk_toml(config: &ObeliskConfig) -> Result<String, a
     const WEBHOOK_SERVER_NAME: &str = "webhook_server";
     const OBELISK_OCI_TOML: &str = include_str!("../../../../obelisk-oci.toml");
 
-    let webhook_healthcheck_ock = {
+    let webhook_healthcheck_oci = {
         let val: toml::Value = toml::from_str(OBELISK_OCI_TOML).expect("Invalid TOML");
 
         let endpoint = val["webhook_endpoint"]
@@ -51,7 +51,7 @@ listening_addr = "0.0.0.0:{HEALTHCHECK_INTERNAL_PORT}"
 
 [[webhook_endpoint]]
 name = "webhook_healthcheck"
-location.oci = "{webhook_healthcheck_ock}"
+location.oci = "{webhook_healthcheck_oci}"
 http_server = "{HEALTHCHECK_SERVER_NAME}"
 routes = [""]
 
