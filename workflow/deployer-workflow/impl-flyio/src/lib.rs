@@ -98,9 +98,6 @@ fn wait_until_started(
         wait_or_fail(start_secs, vm_startup_deadline_secs, || {
             vm_error("timed out waiting for 'started' state".to_string())
         })?;
-        workflow_support::sleep(ScheduleAt::In(SchedulingDuration::Seconds(
-            SLEEP_BETWEEN_RETRIES.as_secs(),
-        )));
     }
 }
 
