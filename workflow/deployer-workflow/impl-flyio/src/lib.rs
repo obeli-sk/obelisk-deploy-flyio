@@ -14,7 +14,7 @@ use generated::{
     obelisk_flyio::{
         activity_fly_http::{
             self,
-            ips::{IpRequest, IpVariant, Ipv6Config},
+            ips::{IpVariant, Ipv6Config},
             machines::{
                 CpuKind, GuestConfig, InitConfig, MachineConfig, MachineRestart, MachineState,
                 Mount, PortConfig, PortHandler, RestartPolicy, ServiceConfig, ServiceProtocol,
@@ -68,21 +68,13 @@ fn obelisk_image(obelisk_version: &str) -> String {
 }
 
 fn allocate_ip(app_name: &str) -> Result<(), AppInitModifyError> {
-    activity_fly_http::ips::allocate_unsafe(
+    activity_fly_http::ips::allocate(
         app_name,
-        IpRequest {
-            config: IpVariant::Ipv6(Ipv6Config { region: None }),
-        },
+        IpVariant::Ipv6(Ipv6Config { region: None }),
+        &[], // Newly created App, thus no pre-existing IPs
     )
     .map(|_ip| ())
     .map_err(AppInitModifyError::IpAllocateError)?;
-    // Since this API is not idempotent, make sure just one IP has been allocated.
-    let ips =
-        activity_fly_http::ips::list(app_name).map_err(AppInitModifyError::IpAllocateError)?;
-    for ip_detail in ips.into_iter().skip(1) {
-        activity_fly_http::ips::release(app_name, &ip_detail.ip)
-            .map_err(AppInitModifyError::IpAllocateError)?;
-    }
     Ok(())
 }
 

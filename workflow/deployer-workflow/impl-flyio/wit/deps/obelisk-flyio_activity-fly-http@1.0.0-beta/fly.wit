@@ -45,19 +45,17 @@ interface ips {
         ipv6-private, // Region config not supported
     }
 
-    record ip-request {
-        config: ip-variant,
-    }
-
     record ip-detail {
         ip: ip-address,
         ip-variant: ip-variant,
     }
 
     /// Allocate an IP address.
-    /// Non idempotent: Retry of a success will allocate another IP address.
-    /// Upon allocating an IP the caller should use `list` and `release` to prevent this issue.
-    allocate-unsafe: func(app-name: string, request: ip-request) -> result<ip-address, string>;
+    /// In order to implement idempotency the caller must supply `pre-existing-ips` parameter containing
+    /// all pre-existing IPs.
+    /// The caller must ensure it is the single writer to this app's IP interface, because all found IPs
+    /// except the (last) created one and those in `pre-existing-ips` will be deleted.
+    allocate: func(app-name: string, config: ip-variant, pre-existing-ips: list<ip-detail>) -> result<ip-address, string>;
 
     /// List allocated IP addresses
     %list: func(app-name: string) -> result<list<ip-detail>, string>;
