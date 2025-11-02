@@ -31,7 +31,7 @@ direnv allow
 Start Obelisk server
 ```sh
 just build serve
-# or just `obelisk server run -c obelisk-oci.toml` without building the WASM components locally.
+# or `just serve-oci` without building the WASM components locally.
 ```
 
 ## Starting the workflow
