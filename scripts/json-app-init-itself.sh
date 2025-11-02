@@ -23,7 +23,7 @@ cat <<EOF
     "activity-wasm-list":[
         {
             "name": "activity_fly_http",
-            "location-oci": "docker.io/getobelisk/components_flyio_activity_fly_http:2025-10-05@sha256:fc19825d246fae8110f0473a505bf1da727086832bb0820653ec36e940822024",
+            "location-oci": "docker.io/getobelisk/components_flyio_activity_fly_http:2025-11-02@sha256:af958625f8e056bceeb33ec768abde32c716866305ee6e1abc6f63fc759079db",
             "env-vars":["FLY_API_TOKEN"],
             "lock-expiry-seconds": 15,
             "max-retries": 6
