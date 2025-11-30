@@ -24,7 +24,7 @@ serde = { version = "1.0", features = ["derive"] }
 toml = "0.9"
 wit-bindgen = "0.48.1"
 wit-bindgen-rust = "0.48.1"
-wit-parser = "0.242.0"
+wit-parser = "0.241.2"
 wstd = "0.6.3"
 
 [profile.release]
