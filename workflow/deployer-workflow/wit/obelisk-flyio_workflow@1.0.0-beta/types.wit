@@ -73,6 +73,7 @@ interface types {
         health-check-failed,
         /// Trap (panic) during execution
         execution-failed,
+        cancelled,
     }
 
     record app-cleanup-failed {
