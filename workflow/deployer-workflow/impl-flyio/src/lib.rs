@@ -84,7 +84,9 @@ fn wait_until_started(
     vm_error: fn(String) -> AppInitModifyError,
     vm_startup_deadline_secs: u16,
 ) -> Result<(), AppInitModifyError> {
-    let start_secs = workflow_support::sleep(ScheduleAt::Now).seconds;
+    let start_secs = workflow_support::sleep(ScheduleAt::Now)
+        .map_err(|()| AppInitModifyError::Cancelled)?
+        .seconds;
     loop {
         let machine = activity_fly_http::machines::get(app_name, machine_id).map_err(vm_error)?;
         let state = machine
@@ -221,7 +223,8 @@ dbs:
     // Wait a bit for clean shutdown
     workflow_support::sleep(ScheduleAt::In(SchedulingDuration::Seconds(
         SLEEP_AFTER_TEMP_VM_SHUTDOWN.as_secs(),
-    )));
+    )))
+    .map_err(|()| AppInitModifyError::Cancelled)?;
     // Destroy the VM with force.
     activity_fly_http::machines::delete(app_name, &temp_vm_id, true)
         .map_err(AppInitModifyError::TempVmError)?;
@@ -245,7 +248,9 @@ fn wait_for_secrets(
     if required_secrets.is_empty() {
         return Ok(());
     }
-    let start_secs = workflow_support::sleep(ScheduleAt::Now).seconds;
+    let start_secs = workflow_support::sleep(ScheduleAt::Now)
+        .map_err(|()| AppInitModifyError::Cancelled)?
+        .seconds;
     loop {
         let actual_secrets = match activity_fly_http::secrets::list(app_name) {
             Ok(actual_secrets) => actual_secrets
@@ -421,7 +426,9 @@ fn wait_or_fail(
     err: impl Fn() -> AppInitModifyError,
 ) -> Result<(), AppInitModifyError> {
     // Obtain current time
-    let current_secs = workflow_support::sleep(ScheduleAt::Now).seconds;
+    let current_secs = workflow_support::sleep(ScheduleAt::Now)
+        .map_err(|()| AppInitModifyError::Cancelled)?
+        .seconds;
 
     if current_secs + SLEEP_BETWEEN_RETRIES.as_secs() - start_secs > deadline_secs as u64 {
         // bail out even if the timeout would be reached after the sleep.
@@ -429,13 +436,16 @@ fn wait_or_fail(
     }
     workflow_support::sleep(ScheduleAt::In(SchedulingDuration::Seconds(
         SLEEP_BETWEEN_RETRIES.as_secs(),
-    )));
+    )))
+    .map_err(|()| AppInitModifyError::Cancelled)?;
     Ok(())
 }
 
 /// Sleep until the health check passes, observing the deadline, or the app is deleted.
 fn check_health(app_name: &str, health_check_deadline_secs: u16) -> Result<(), AppInitModifyError> {
-    let start_secs = workflow_support::sleep(ScheduleAt::Now).seconds;
+    let start_secs = workflow_support::sleep(ScheduleAt::Now)
+        .map_err(|()| AppInitModifyError::Cancelled)?
+        .seconds;
     let url = format!("https://{app_name}.fly.dev:{HEALTHCHECK_EXTERNAL_PORT}");
     loop {
         if let Ok(http_get::Response {
