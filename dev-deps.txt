@@ -4,8 +4,8 @@ cargo generate 0.23.5
 cargo-insta 1.44.3
 cargo-nextest 0.9.114
 just 1.43.1
-obelisk 0.29.1
+obelisk 0.30.0
 pkg-config 0.29.2
-rustc 1.91.1 (ed61e7d7e 2025-11-07)
-wasm-tools 1.242.0
+rustc 1.92.0 (ded5c06cf 2025-12-08)
+wasm-tools 1.243.0
 ldd (GNU libc) 2.40
