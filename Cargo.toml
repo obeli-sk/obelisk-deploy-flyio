@@ -19,7 +19,7 @@ assert_matches = "1.5.0"
 const_format = "0.2.35"
 derive_more = { version = "2.1.0", features = ["debug"] }
 hashbrown = "0.16.1"
-insta = "1.44.3"
+insta = "1.45.0"
 serde = { version = "1.0", features = ["derive"] }
 toml = "0.9"
 wit-bindgen = "0.50.0"
