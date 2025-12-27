@@ -73,7 +73,7 @@ name = "webhook_healthcheck"
 routes = [""]
 
 [webhook_endpoint.location]
-oci = "docker.io/getobelisk/components_flyio_webhook_healthcheck:2025-12-08@sha256:420ab1d0c0bd59a904c761f55e2263a5629fb5761e796ffcd62e81d2f364b8e2"
+oci = "new"
 
 [[webhook_endpoint]]
 env_vars = ["GITHUB_WEBHOOK_SECRET"]
