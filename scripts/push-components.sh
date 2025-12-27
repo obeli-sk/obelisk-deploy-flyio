@@ -21,13 +21,20 @@ push() {
 }
 
 # Build components
-just build
+#just build
 
-push "target/wasm32-unknown-unknown/release_workflow/obelisk_deployer_flyio.wasm"
-push "target/wasm32-wasip2/release_webhook/webhook_healthcheck.wasm"
+#push "target/wasm32-unknown-unknown/release_workflow/obelisk_deployer_flyio.wasm"
+#push "target/wasm32-wasip2/release_webhook/webhook_healthcheck.wasm"
+FILE_NAME_WITHOUT_EXT="webhook_healthcheck"
+OUTPUT="new"
+sed -i -E "/name = \"${FILE_NAME_WITHOUT_EXT}\"/{n;s|location\.oci = \".*\"|location.oci = \"${OUTPUT}\"|}" "$TOML_FILE"
+git status -s
 
 echo "All components pushed and TOML file updated successfully."
 
 # obelisk.toml is parsed in toml.rs, snapshots will need updating.
 ./scripts/test.sh || true
+
+git status -s
+
 cargo insta accept --workspace
