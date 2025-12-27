@@ -1,0 +1,35 @@
+api.listening_addr = "127.0.0.1:5005"
+webui.listening_addr = "127.0.0.1:8080"
+
+database.postgres.host =     "${POSTGRES_HOST}"
+database.postgres.user =     "${POSTGRES_USER}"
+database.postgres.password = "${POSTGRES_PASSWORD}"
+database.postgres.db_name =  "${POSTGRES_DATABASE}"
+database.postgres.provision_policy = "auto"
+
+log.stdout.enabled = true
+
+[[activity_wasm]]
+name = "activity_fly_http"
+location.oci = "docker.io/getobelisk/components_flyio_activity_fly_http:2025-11-02@sha256:af958625f8e056bceeb33ec768abde32c716866305ee6e1abc6f63fc759079db"
+exec.lock_expiry.seconds = 15
+env_vars = ["FLY_API_TOKEN"]
+forward_stdout = "stderr"
+forward_stderr = "stderr"
+max_retries = 6
+
+[[activity_wasm]]
+name = "http_activity"
+location.oci = "docker.io/getobelisk/test_programs_http_get_activity:2025-09-28@sha256:8131d9cafbdf06dbaf7a3b4e629791c9cf3dc1553df9418b34f25ab900b72929"
+exec.lock_expiry.seconds = 5
+forward_stdout = "stderr"
+forward_stderr = "stderr"
+
+[[workflow]]
+name = "obelisk_deployer_flyio"
+location.path = "${OBELISK_TOML_DIR}/target/wasm32-unknown-unknown/release_workflow/obelisk_deployer_flyio.wasm"
+backtrace.sources = { ".../src/lib.rs" = "${OBELISK_TOML_DIR}/workflow/deployer-workflow/impl-flyio/src/lib.rs" }
+
+[[http_server]]
+name = "webhook_server"
+listening_addr = "0.0.0.0:9090"
