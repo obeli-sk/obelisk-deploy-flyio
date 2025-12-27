@@ -1,0 +1,59 @@
+name: check-test
+permissions:
+  contents: read
+  issues: read
+  checks: write
+  pull-requests: write
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - latest
+  pull_request:
+
+# If new code is pushed to a PR branch, then cancel in progress workflows for that PR.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash -xe {0}
+
+jobs:
+  ci-test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
+
+      - uses: nixbuild/nix-quick-install-action@2c9db80fb984ceb1bcaa77cdda3fdf8cfba92035
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Populate the nix store
+        run: nix develop .#noObelisk --command echo
+
+      - name: Build tests
+        run: nix develop .#noObelisk --command cargo nextest run --workspace --all-features --no-run
+
+      - name: cargo test
+        run: nix develop .#noObelisk --command cargo nextest run --workspace --all-features  --profile ${{ github.job }}
+        env:
+          RUST_LOG: "info,executor=trace,wasm_workers=trace,db=info"
+          CI: true
+
+      - name: Upload test results
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: junit-report
+          path: target/nextest/${{ github.job }}/junit.xml
+
+      - name: Report results in GitHub UI
+        uses: dorny/test-reporter@fe45e9537387dac839af0d33ba56eed8e24189e8
+        if: always()
+        with:
+          name: Rust tests
+          path: target/nextest/${{ github.job }}/junit.xml
+          reporter: java-junit
