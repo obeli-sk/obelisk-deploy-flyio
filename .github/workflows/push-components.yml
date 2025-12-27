@@ -58,7 +58,7 @@ jobs:
 
       - name: Push obelisk-oci.toml
         run: |
-          git add obelisk-oci.toml
+          git add .
           git commit -m "chore: Bump components to $TAG"
           git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git
           git push origin ${{ github.event.inputs.ref }}
