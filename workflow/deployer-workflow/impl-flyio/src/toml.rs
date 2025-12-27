@@ -29,7 +29,6 @@ pub(crate) fn serialize_obelisk_toml(config: &ObeliskConfig) -> Result<String, a
 
     let initial_toml_template = format!(
         r#"
-sqlite.directory = "{SQLITE_DIRECTORY_PATH}"
 wasm.cache_directory = "{VOLUME_MOUNT_PATH}/wasm"
 wasm.codegen_cache.directory = "{VOLUME_MOUNT_PATH}/codegen"
 
@@ -39,7 +38,9 @@ wasm.backtrace.persist = false # Speed up execution
 api.listening_addr = "[::]:5005"
 webui.listening_addr = "[::]:8080"
 
-sqlite.pragma = {{ "cache_size" = "3000" }}
+[database.sqlite]
+directory = "{SQLITE_DIRECTORY_PATH}"
+pragma = {{ "cache_size" = "3000" }}
 
 [log.stdout]
 enabled = true
