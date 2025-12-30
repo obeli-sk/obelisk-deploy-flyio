@@ -187,8 +187,10 @@ listening_addr = "0.0.0.0:{WEBHOOK_INTERNAL_PORT}"
                                 .collect(),
                         ),
                     );
-                    route_table
-                        .insert("route".to_string(), toml::Value::String(route.path.clone()));
+                    route_table.insert(
+                        "route".to_string(),
+                        toml::Value::String(route.route.clone()),
+                    );
                     toml::Value::Table(route_table)
                 })
                 .collect();
@@ -263,7 +265,7 @@ mod tests {
                     routes: vec![
                         Route {
                             methods: vec!["POST".to_string(), "GET".to_string()],
-                            path: "".to_string(),
+                            route: "".to_string(),
                         },
                     ],
                     env_vars: Some(vec!["GITHUB_WEBHOOK_SECRET".to_string()]),

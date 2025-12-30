@@ -44,8 +44,8 @@ cat <<EOF
     "webhook-endpoint-list":[
         {
             "name": "stargazers_webhook",
-            "routes": [{ "methods": ["POST", "GET"], "path": "" }],
             "location-oci": "docker.io/getobelisk/demo_stargazers_webhook:2025-12-08@sha256:1c2a83322fcdf50078e804a8bef7b2ba1e6c56d77285ae2f55e091991bb964ac",
+            "routes": [{ "methods": ["POST", "GET"], "route": "" }],
             "env-vars": ["GITHUB_WEBHOOK_SECRET"]
         }
     ]

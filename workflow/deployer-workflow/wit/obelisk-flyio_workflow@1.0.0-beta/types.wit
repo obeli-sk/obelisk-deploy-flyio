@@ -34,7 +34,7 @@ interface types {
 
     record route {
         methods: list<string>,
-        path: string,
+        route: string,
     }
 
     record app-init-config {
