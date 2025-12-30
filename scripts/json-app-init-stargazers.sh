@@ -18,19 +18,19 @@ cat <<EOF
     "activity-wasm-list":[
         {
             "name": "stargazers_activity_llm_chatgpt",
-            "location-oci": "docker.io/getobelisk/demo_stargazers_activity_llm_openai:2025-09-28@sha256:4b10a66c80bec625a6b0a2e8a4b5192f8a2356eca19c0a6705335771a8b8b1e8",
+            "location-oci": "docker.io/getobelisk/demo_stargazers_activity_llm_openai:2025-12-08@sha256:f50464f5bd26e6ebbbe1915f577f04cd67b49f94d2d2c8d5f3b3e8e4fda5b1e5",
             "env-vars":["OPENAI_API_KEY"],
             "lock-expiry-seconds": 10
         },
         {
             "name": "stargazers_activity_github_impl",
-            "location-oci": "docker.io/getobelisk/demo_stargazers_activity_github_impl:2025-09-28@sha256:8f6fc9b1379b359e085998fa2fd7c966c450327d09770807dfba4b2f75731d72",
+            "location-oci": "docker.io/getobelisk/demo_stargazers_activity_github_impl:2025-12-08@sha256:f281f3103883ea3bbc0130f5fdc00ae93eda27cd5a41829dbc1ad56e290478a3",
             "env-vars": ["GITHUB_TOKEN"],
             "lock-expiry-seconds": 5
         },
         {
             "name": "stargazers_activity_db_turso",
-            "location-oci": "docker.io/getobelisk/demo_stargazers_activity_db_turso:2025-09-28@sha256:26b08b3d0c6e430944d8187a00bd9817a83ab89e11ba72d15e7533a758addf33",
+            "location-oci": "docker.io/getobelisk/demo_stargazers_activity_db_turso:2025-12-08@sha256:cdad4f289abdc68e1d062f45a717478df2a7c3576940b00644d81bceeea94264",
             "env-vars": ["TURSO_TOKEN", "TURSO_LOCATION"],
             "lock-expiry-seconds": 5
         }
@@ -38,14 +38,14 @@ cat <<EOF
     "workflow-list":[
         {
             "name": "stargazers_workflow",
-            "location-oci": "docker.io/getobelisk/demo_stargazers_workflow:2025-09-28@sha256:678d85e3e2f89d22794fd1ffc0217bf23510e1349ee150a54d5c82cc2ef75834"
+            "location-oci": "docker.io/getobelisk/demo_stargazers_workflow:2025-12-08@sha256:c8a9d14979978564692131f08d912db5fa20f7a8e4253490fae4cbcc7f6286b7"
         }
     ],
     "webhook-endpoint-list":[
         {
             "name": "stargazers_webhook",
-            "location-oci": "docker.io/getobelisk/demo_stargazers_webhook:2025-09-28@sha256:aa4dfa18d1ad7c1623163eeabb41a415ebad5296fca8f3b957987afcdb2a0f40",
             "routes": [{ "methods": ["POST", "GET"], "path": "" }],
+            "location-oci": "docker.io/getobelisk/demo_stargazers_webhook:2025-12-08@sha256:1c2a83322fcdf50078e804a8bef7b2ba1e6c56d77285ae2f55e091991bb964ac",
             "env-vars": ["GITHUB_WEBHOOK_SECRET"]
         }
     ]
