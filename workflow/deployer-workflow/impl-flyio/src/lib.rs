@@ -38,6 +38,8 @@ export!(Component with_types_in generated);
 
 const VOLUME_NAME: &str = "db";
 const VM_NAME_TEMP: &str = "temp";
+const TEMP_VM_MEMORY_MB: u64 = 256;
+const TEMP_VM_SWAP_MB: u64 = 256;
 
 const MAX_VM_FAILURE_RETRIES: u32 = 5;
 
@@ -48,8 +50,11 @@ const MINIO_BUCKET_NAME: &str = "litestream-bucket";
 const MINIO_ACCESS_KEY_ID: &str = "minioadmin";
 const MINIO_SECRET_ACCESS_KEY: &str = "minioadmin";
 const MINIO_PORT: u16 = 9000;
+const MINIO_VM_MEMORY_MB: u64 = 256;
 
 const VM_NAME_FINAL: &str = "obelisk";
+const FINAL_VM_MEMORY_MB: u64 = 256;
+const FINAL_VM_SWAP_MB: u64 = 256;
 const VOLUME_MOUNT_PATH: &str = "/volume";
 const OBELISK_TOML_PATH: &str = formatcp!("{VOLUME_MOUNT_PATH}/obelisk.toml");
 const OBELISK_BIN_PATH: &str = "/obelisk/obelisk";
@@ -133,7 +138,7 @@ fn setup_volume(
             guest: Some(GuestConfig {
                 cpu_kind: Some(CpuKind::Shared),
                 cpus: Some(1),
-                memory_mb: Some(256),
+                memory_mb: Some(TEMP_VM_MEMORY_MB),
                 kernel_args: None,
             }),
             auto_destroy: None, // Some(false) - was creating a stopped machine
@@ -142,7 +147,7 @@ fn setup_volume(
                 cmd: Some(vec!["infinity".to_string()]),
                 exec: None,
                 kernel_args: None,
-                swap_size_mb: Some(256),
+                swap_size_mb: Some(TEMP_VM_SWAP_MB),
                 tty: None,
             }),
             env: None,
@@ -281,7 +286,7 @@ fn minio_start(app_name: &str) -> Result<String, AppInitModifyError> {
             guest: Some(GuestConfig {
                 cpu_kind: Some(CpuKind::Shared),
                 cpus: Some(1),
-                memory_mb: Some(256),
+                memory_mb: Some(MINIO_VM_MEMORY_MB),
                 kernel_args: None,
             }),
             auto_destroy: None,
@@ -365,7 +370,7 @@ fn start_final_vm(
             guest: Some(GuestConfig {
                 cpu_kind: Some(CpuKind::Shared),
                 cpus: Some(1),
-                memory_mb: Some(256),
+                memory_mb: Some(FINAL_VM_MEMORY_MB),
                 kernel_args: None,
             }),
             auto_destroy: None,
@@ -374,7 +379,7 @@ fn start_final_vm(
                 entrypoint,
                 exec: None,
                 kernel_args: None,
-                swap_size_mb: Some(256),
+                swap_size_mb: Some(FINAL_VM_SWAP_MB),
                 tty: None,
             }),
             env: None,
