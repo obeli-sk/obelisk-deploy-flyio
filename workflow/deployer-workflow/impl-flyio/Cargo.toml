@@ -12,6 +12,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 anyhow.workspace = true
+assert_matches.workspace = true
 const_format.workspace = true
 hashbrown.workspace = true
 toml.workspace = true

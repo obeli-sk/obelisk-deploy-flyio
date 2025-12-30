@@ -3,6 +3,7 @@ mod generated {
     #![allow(clippy::empty_line_after_outer_attr)]
     include!(concat!(env!("OUT_DIR"), "/any.rs"));
 }
+use assert_matches::assert_matches;
 use const_format::formatcp;
 use generated::{
     export,
@@ -33,7 +34,10 @@ use hashbrown::{HashMap, HashSet};
 use std::time::Duration;
 use toml::serialize_obelisk_toml;
 
-use crate::generated::obelisk::{log::log::warn, types::join_set::JoinSet};
+use crate::generated::obelisk::{
+    log::log::warn,
+    types::join_set::{JoinSet, ResponseId},
+};
 
 struct Component;
 export!(Component with_types_in generated);
@@ -109,7 +113,7 @@ fn wait_until_started(
         wait_or_fail(
             start_secs,
             vm_startup_deadline_secs,
-            &format!("{state:?}"),
+            &format!("{machine_id}/{state:?}"),
             || vm_error("timed out waiting for 'started' state".to_string()),
             &mut join_sets,
         )?;
@@ -462,10 +466,11 @@ fn wait_or_fail(
             workflow_support::join_set_create()
         })
     });
-    join_set.submit_delay(ScheduleAt::In(SchedulingDuration::Seconds(
+    let delay_id = join_set.submit_delay(ScheduleAt::In(SchedulingDuration::Seconds(
         SLEEP_BETWEEN_RETRIES.as_secs(),
     )));
-    let (_id, res) = join_set.join_next().expect("cannot return all-processed");
+    let (response_id, res) = join_set.join_next().expect("cannot return all-processed");
+    assert_matches!(response_id, ResponseId::DelayId(awaited) if awaited.id == delay_id.id);
     res.map_err(|()| AppInitModifyError::Cancelled)?;
     Ok(())
 }
