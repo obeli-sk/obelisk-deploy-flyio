@@ -16,4 +16,5 @@ world any {
     import testing:http/http-get;
 
     import obelisk:workflow/workflow-support@4.0.0;
+    import obelisk:log/log@1.0.0;
 }

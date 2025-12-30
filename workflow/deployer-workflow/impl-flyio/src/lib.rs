@@ -29,9 +29,11 @@ use generated::{
     },
     testing::http::http_get,
 };
-use hashbrown::HashSet;
+use hashbrown::{HashMap, HashSet};
 use std::time::Duration;
 use toml::serialize_obelisk_toml;
+
+use crate::generated::obelisk::{log::log::warn, types::join_set::JoinSet};
 
 struct Component;
 export!(Component with_types_in generated);
@@ -92,6 +94,7 @@ fn wait_until_started(
     let start_secs = workflow_support::sleep(ScheduleAt::Now)
         .map_err(|()| AppInitModifyError::Cancelled)?
         .seconds;
+    let mut join_sets = HashMap::new();
     loop {
         let machine = activity_fly_http::machines::get(app_name, machine_id).map_err(vm_error)?;
         let state = machine
@@ -102,9 +105,14 @@ fn wait_until_started(
         if state == MachineState::Started {
             return Ok(());
         }
-        wait_or_fail(start_secs, vm_startup_deadline_secs, || {
-            vm_error("timed out waiting for 'started' state".to_string())
-        })?;
+
+        wait_or_fail(
+            start_secs,
+            vm_startup_deadline_secs,
+            &format!("{state:?}"),
+            || vm_error("timed out waiting for 'started' state".to_string()),
+            &mut join_sets,
+        )?;
     }
 }
 
@@ -256,6 +264,7 @@ fn wait_for_secrets(
     let start_secs = workflow_support::sleep(ScheduleAt::Now)
         .map_err(|()| AppInitModifyError::Cancelled)?
         .seconds;
+    let mut join_sets = HashMap::new();
     loop {
         let actual_secrets = match activity_fly_http::secrets::list(app_name) {
             Ok(actual_secrets) => actual_secrets
@@ -267,12 +276,17 @@ fn wait_for_secrets(
                 HashSet::default()
             }
         };
-        if required_secrets.is_subset(&actual_secrets) {
+        let mut missing_secrets = required_secrets.difference(&actual_secrets);
+        let Some(first_missing) = missing_secrets.next() else {
             return Ok(());
-        }
-        wait_or_fail(start_secs, secrets_deadline_secs, || {
-            AppInitModifyError::WaitingForSecretsTimedOut
-        })?;
+        };
+        wait_or_fail(
+            start_secs,
+            secrets_deadline_secs,
+            first_missing,
+            || AppInitModifyError::WaitingForSecretsTimedOut,
+            &mut join_sets,
+        )?;
     }
 }
 
@@ -428,7 +442,9 @@ fn start_final_vm(
 fn wait_or_fail(
     start_secs: u64,
     deadline_secs: u16,
+    name: &str,
     err: impl Fn() -> AppInitModifyError,
+    join_sets: &mut HashMap<String, JoinSet>,
 ) -> Result<(), AppInitModifyError> {
     // Obtain current time
     let current_secs = workflow_support::sleep(ScheduleAt::Now)
@@ -439,11 +455,32 @@ fn wait_or_fail(
         // bail out even if the timeout would be reached after the sleep.
         return Err(err());
     }
-    workflow_support::sleep(ScheduleAt::In(SchedulingDuration::Seconds(
+    let name = sanitize_join_set_name(name);
+    let join_set = join_sets.entry(name).or_insert_with_key(|name| {
+        workflow_support::join_set_create_named(name).unwrap_or_else(|err| {
+            warn(&format!("Cannot create `{name}` - {err}"));
+            workflow_support::join_set_create()
+        })
+    });
+    join_set.submit_delay(ScheduleAt::In(SchedulingDuration::Seconds(
         SLEEP_BETWEEN_RETRIES.as_secs(),
-    )))
-    .map_err(|()| AppInitModifyError::Cancelled)?;
+    )));
+    let (_id, res) = join_set.join_next().expect("cannot return all-processed");
+    res.map_err(|()| AppInitModifyError::Cancelled)?;
     Ok(())
+}
+
+pub fn sanitize_join_set_name(input: &str) -> String {
+    input
+        .chars()
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || c == '-' || c == '/' {
+                c
+            } else {
+                '-'
+            }
+        })
+        .collect()
 }
 
 /// Sleep until the health check passes, observing the deadline, or the app is deleted.
@@ -452,19 +489,22 @@ fn check_health(app_name: &str, health_check_deadline_secs: u16) -> Result<(), A
         .map_err(|()| AppInitModifyError::Cancelled)?
         .seconds;
     let url = format!("https://{app_name}.fly.dev:{HEALTHCHECK_EXTERNAL_PORT}");
+    let mut join_sets = HashMap::new();
     loop {
-        if let Ok(http_get::Response {
-            status_code,
-            body: _,
-        }) = http_get::get_resp(&url)
-            && (200..300).contains(&status_code)
-        {
-            return Ok(());
-        }
+        let resp = http_get::get_resp(&url).map(|resp| resp.status_code);
+        let reason = match resp {
+            Ok(200..300) => return Ok(()),
+            Ok(other) => format!("wrong status code: {other}"),
+            Err(err) => format!("cannot connect: {err}"),
+        };
         bail_on_app_deletion(app_name)?;
-        wait_or_fail(start_secs, health_check_deadline_secs, || {
-            AppInitModifyError::HealthCheckFailed
-        })?;
+        wait_or_fail(
+            start_secs,
+            health_check_deadline_secs,
+            &reason,
+            || AppInitModifyError::HealthCheckFailed,
+            &mut join_sets,
+        )?;
     }
 }
 
