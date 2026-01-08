@@ -10,6 +10,7 @@ database.postgres.provision_policy = "auto"
 log.stdout.enabled = true
 
 [[activity_wasm]]
+# For health checking.
 name = "activity_fly_http"
 location.oci = "docker.io/getobelisk/components_flyio_activity_fly_http:2025-11-02@sha256:af958625f8e056bceeb33ec768abde32c716866305ee6e1abc6f63fc759079db"
 exec.lock_expiry.seconds = 15
@@ -25,10 +26,21 @@ exec.lock_expiry.seconds = 5
 forward_stdout = "stderr"
 forward_stderr = "stderr"
 
+[[activity_wasm]]
+name = "activity_obelisk_client"
+location.path = "${OBELISK_TOML_DIR}/target/wasm32-wasip2/release/activity_obelisk_client.wasm"
+forward_stdout = "stderr"
+forward_stderr = "stderr"
+
 [[workflow]]
 name = "obelisk_deployer_flyio"
 location.path = "${OBELISK_TOML_DIR}/target/wasm32-unknown-unknown/release_workflow/obelisk_deployer_flyio.wasm"
-backtrace.sources = { ".../src/lib.rs" = "${OBELISK_TOML_DIR}/workflow/deployer-workflow/impl-flyio/src/lib.rs" }
+backtrace.sources = {
+    ".../src/lib.rs" = "${OBELISK_TOML_DIR}/workflow/deployer-workflow/impl-flyio/src/lib.rs",
+    ".../src/testing.rs" = "${OBELISK_TOML_DIR}/workflow/deployer-workflow/impl-flyio/src/testing.rs",
+    ".../src/toml.rs" = "${OBELISK_TOML_DIR}/workflow/deployer-workflow/impl-flyio/src/toml.rs",
+}
+backtrace.ignore_component_digest = true
 
 [[http_server]]
 name = "webhook_server"

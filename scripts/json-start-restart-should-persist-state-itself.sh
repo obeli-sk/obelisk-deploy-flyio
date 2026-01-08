@@ -9,10 +9,11 @@ OBELISK_VERSION=${OBELISK_VERSION:-$(obelisk -v | cut -d ' ' -f 2)}
 SECRETS_DEADLINE_SECS=${SECRETS_DEADLINE_SECS:-120}
 HEALTH_CHECK_DEADLINE_SECS=${HEALTH_CHECK_DEADLINE_SECS:-120}
 SKIP_CLEANUP=${SKIP_CLEANUP:-false}
-MINIO=${MINIO:-true}
+MINIO=true
 VM_STARTUP_DEADLINE_SECS=${VM_STARTUP_DEADLINE_SECS:-30}
 
 WORKFLOW_OCI=$(awk '/name *= *"obelisk_deployer_flyio"/ {getline; match($0, /"([^"]+)"/, a); print a[1]}' obelisk-oci.toml)
+ACTIVITY_OBELISK_CLIENT_OCI=$(awk '/name *= *"activity_obelisk_client"/ {getline; match($0, /"([^"]+)"/, a); print a[1]}' obelisk-oci.toml)
 
 cat <<EOF
 [
@@ -32,6 +33,10 @@ cat <<EOF
             "name": "http_activity",
             "location-oci": "docker.io/getobelisk/test_programs_http_get_activity:2025-09-28@sha256:8131d9cafbdf06dbaf7a3b4e629791c9cf3dc1553df9418b34f25ab900b72929",
             "lock-expiry-seconds": 5
+        },
+        {
+            "name": "activity_obelisk_client",
+            "location-oci": "$ACTIVITY_OBELISK_CLIENT_OCI"
         }
     ],
     "workflow-list":[
@@ -47,7 +52,7 @@ cat <<EOF
     "skip-cleanup-on-error": $SKIP_CLEANUP,
     "minio": $MINIO,
     "vm-startup-deadline-secs": $VM_STARTUP_DEADLINE_SECS,
-    "expose-api-server": null
+    "expose-api-server": 8405
 }
 ]
 EOF

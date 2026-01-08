@@ -1,0 +1,20 @@
+package obelisk-flyio:workflow@1.0.0-beta;
+
+interface testing {
+    use types.{obelisk-config, app-init-config, machine-id};
+
+    start-restart-should-persist-state: func(
+        org-slug: string,
+        app-name: string,
+        obelisk-config: obelisk-config,
+        app-init-config: app-init-config,
+    ) -> result<_, string>;
+
+    restart-should-persist-state: func(
+        app-name: string,
+        obelisk-config: obelisk-config,
+        app-init-config: app-init-config,
+    ) -> result<_, string>;
+
+
+}

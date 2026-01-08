@@ -1,3 +1,4 @@
+mod testing;
 mod toml;
 mod generated {
     #![allow(clippy::empty_line_after_outer_attr)]
@@ -34,9 +35,12 @@ use hashbrown::{HashMap, HashSet};
 use std::time::Duration;
 use toml::serialize_obelisk_toml;
 
-use crate::generated::obelisk::{
-    log::log::warn,
-    types::join_set::{JoinSet, ResponseId},
+use crate::generated::{
+    exports::obelisk_flyio::workflow::workflow::MachineId,
+    obelisk::{
+        log::log::warn,
+        types::join_set::{JoinSet, ResponseId},
+    },
 };
 
 struct Component;
@@ -69,6 +73,7 @@ const SQLITE_DIRECTORY_PATH: &str = formatcp!("{VOLUME_MOUNT_PATH}/obelisk-sqlit
 const SQLITE_FILE_PATH: &str = formatcp!("{SQLITE_DIRECTORY_PATH}/obelisk.sqlite");
 const REGION: Region = Region::Ams;
 const WEBHOOK_INTERNAL_PORT: u16 = 9090;
+const API_INTERNAL_PORT: u16 = 5005;
 const HEALTHCHECK_INTERNAL_PORT: u16 = 9091;
 const HEALTHCHECK_EXTERNAL_PORT: u16 = 444;
 const SLEEP_BETWEEN_RETRIES: Duration = Duration::from_secs(10);
@@ -127,7 +132,7 @@ fn setup_volume(
     obelisk_version: &str,
     obelisk_toml: &str,
     minio_machine_id: Option<&str>,
-    vm_startup_deadline_secs: u16,
+    temp_vm_startup_deadline_secs: u16,
 ) -> Result<(), AppInitModifyError> {
     // Create a volume
     activity_fly_http::volumes::create(
@@ -182,7 +187,7 @@ fn setup_volume(
         app_name,
         &temp_vm_id,
         AppInitModifyError::TempVmError,
-        vm_startup_deadline_secs,
+        temp_vm_startup_deadline_secs,
     )?;
 
     let write_file = |file_name: &str, content: &str| {
@@ -360,7 +365,8 @@ fn start_final_vm(
     obelisk_version: &str,
     litestream: bool,
     vm_startup_deadline_secs: u16,
-) -> Result<(), AppInitModifyError> {
+    expose_api_server: Option<u16>,
+) -> Result<MachineId, AppInitModifyError> {
     let entrypoint = if litestream {
         Some(vec!["/usr/local/bin/litestream".to_string()])
     } else {
@@ -379,6 +385,36 @@ fn start_final_vm(
     } else {
         cmd.into_iter().map(ToString::to_string).collect()
     };
+    let mut services = vec![
+        // Expose health check server as https://[::]:HEALTHCHECK_EXTERNAL_PORT
+        ServiceConfig {
+            internal_port: HEALTHCHECK_INTERNAL_PORT,
+            protocol: ServiceProtocol::Tcp,
+            ports: vec![PortConfig {
+                port: HEALTHCHECK_EXTERNAL_PORT,
+                handlers: vec![PortHandler::Tls],
+            }],
+        },
+        // expose webhook server as default https
+        ServiceConfig {
+            internal_port: WEBHOOK_INTERNAL_PORT,
+            protocol: ServiceProtocol::Tcp,
+            ports: vec![PortConfig {
+                port: 443,
+                handlers: vec![PortHandler::Tls],
+            }],
+        },
+    ];
+    if let Some(exposed_api_port) = expose_api_server {
+        services.push(ServiceConfig {
+            internal_port: API_INTERNAL_PORT,
+            protocol: ServiceProtocol::Tcp,
+            ports: vec![PortConfig {
+                port: exposed_api_port,
+                handlers: vec![PortHandler::Tls],
+            }],
+        });
+    }
 
     let machine_id = activity_fly_http::machines::create(
         app_name,
@@ -410,26 +446,7 @@ fn start_final_vm(
                 volume: VOLUME_NAME.to_string(),
                 path: VOLUME_MOUNT_PATH.to_string(),
             }]),
-            services: Some(vec![
-                // Expose health check server as https://[::]:HEALTHCHECK_EXTERNAL_PORT
-                ServiceConfig {
-                    internal_port: HEALTHCHECK_INTERNAL_PORT,
-                    protocol: ServiceProtocol::Tcp,
-                    ports: vec![PortConfig {
-                        port: HEALTHCHECK_EXTERNAL_PORT,
-                        handlers: vec![PortHandler::Tls],
-                    }],
-                },
-                // expose webhook server as default https
-                ServiceConfig {
-                    internal_port: WEBHOOK_INTERNAL_PORT,
-                    protocol: ServiceProtocol::Tcp,
-                    ports: vec![PortConfig {
-                        port: 443,
-                        handlers: vec![PortHandler::Tls],
-                    }],
-                },
-            ]),
+            services: Some(services),
         },
         Some(REGION),
     )
@@ -440,7 +457,7 @@ fn start_final_vm(
         AppInitModifyError::FinalVmError,
         vm_startup_deadline_secs,
     )?;
-    Ok(())
+    Ok(machine_id)
 }
 
 fn wait_or_fail(
@@ -488,12 +505,17 @@ pub fn sanitize_join_set_name(input: &str) -> String {
         .collect()
 }
 
+fn url(app_name: &str, port: u16, suffix: &str) -> String {
+    format!("https://{app_name}.fly.dev:{port}{suffix}")
+}
+
 /// Sleep until the health check passes, observing the deadline, or the app is deleted.
 fn check_health(app_name: &str, health_check_deadline_secs: u16) -> Result<(), AppInitModifyError> {
     let start_secs = workflow_support::sleep(ScheduleAt::Now)
         .map_err(|()| AppInitModifyError::Cancelled)?
         .seconds;
-    let url = format!("https://{app_name}.fly.dev:{HEALTHCHECK_EXTERNAL_PORT}");
+    let url = url(app_name, HEALTHCHECK_EXTERNAL_PORT, "");
+
     let mut join_sets = HashMap::new();
     loop {
         let resp = http_get::get_resp(&url).map(|resp| resp.status_code);
@@ -556,13 +578,9 @@ impl Guest for Component {
     fn prepare(
         org_slug: String,
         app_name: String,
-        config: ObeliskConfig,
         minio: bool,
-        vm_startup_deadline_secs: u16,
-    ) -> Result<(), AppInitModifyError> {
-        // Check that we can serialize the configuration first.
-        // A panic is translated to `app-init-modify-error::execution-failed`
-        let obelisk_toml = serialize_obelisk_toml(&config).unwrap();
+        minio_vm_startup_deadline_secs: u16,
+    ) -> Result<Option<MachineId>, AppInitModifyError> {
         app_create(&org_slug, &app_name)?;
         // Allocate an IPv6 address first.
         allocate_ip(&app_name)?;
@@ -573,21 +591,30 @@ impl Guest for Component {
                 &app_name,
                 &minio_machine_id,
                 AppInitModifyError::MinioVmError,
-                vm_startup_deadline_secs,
+                minio_vm_startup_deadline_secs,
             )?;
             minio_configure(&app_name, &minio_machine_id)?;
             Some(minio_machine_id)
         } else {
             None
         };
+        Ok(minio_machine_id)
+    }
+
+    fn set_up_volume(
+        app_name: String,
+        config: ObeliskConfig,
+        minio_machine_id: Option<MachineId>,
+        temp_vm_startup_deadline_secs: u16,
+    ) -> Result<(), AppInitModifyError> {
+        let obelisk_toml = serialize_obelisk_toml(&config).unwrap();
         setup_volume(
             &app_name,
             &config.obelisk_version,
             &obelisk_toml,
             minio_machine_id.as_deref(),
-            vm_startup_deadline_secs,
-        )?;
-        Ok(())
+            temp_vm_startup_deadline_secs,
+        )
     }
 
     fn wait_for_secrets(
@@ -605,12 +632,14 @@ impl Guest for Component {
         obelisk_version: String,
         litestream: bool,
         vm_startup_deadline_secs: u16,
-    ) -> Result<(), AppInitModifyError> {
+        expose_api_server: Option<u16>,
+    ) -> Result<MachineId, AppInitModifyError> {
         start_final_vm(
             &app_name,
             &obelisk_version,
             litestream,
             vm_startup_deadline_secs,
+            expose_api_server,
         )
     }
 
@@ -627,15 +656,22 @@ impl Guest for Component {
         app_name: String,
         obelisk_config: ObeliskConfig,
         init_config: AppInitConfig,
-    ) -> Result<(), AppInitError> {
+    ) -> Result<MachineId, AppInitError> {
         // Launch sub-workflows by using import.
         // In case of any error including a trap (panic), delete the whole app.
         let obelisk_version = obelisk_config.obelisk_version.clone();
-        workflow_import::prepare(
+        let minio_id = workflow_import::prepare(
             &org_slug,
             &app_name,
-            &obelisk_config,
             init_config.minio,
+            init_config.vm_startup_deadline_secs,
+        )
+        .map_err(|err| cleanup(&app_name, err, init_config.skip_cleanup_on_error))?;
+
+        workflow_import::set_up_volume(
+            &app_name,
+            &obelisk_config,
+            minio_id.as_deref(),
             init_config.vm_startup_deadline_secs,
         )
         .map_err(|err| cleanup(&app_name, err, init_config.skip_cleanup_on_error))?;
@@ -647,18 +683,19 @@ impl Guest for Component {
         )
         .map_err(|err| cleanup(&app_name, err, init_config.skip_cleanup_on_error))?;
 
-        workflow_import::start_final_vm(
+        let machine_id = workflow_import::start_final_vm(
             &app_name,
             &obelisk_version,
             init_config.minio,
             init_config.vm_startup_deadline_secs,
+            init_config.expose_api_server,
         )
         .map_err(|err| cleanup(&app_name, err, init_config.skip_cleanup_on_error))?;
 
         workflow_import::wait_for_health_check(&app_name, init_config.health_check_deadline_secs)
             .map_err(|err| cleanup(&app_name, err, init_config.skip_cleanup_on_error))?;
 
-        Ok(())
+        Ok(machine_id)
     }
 }
 

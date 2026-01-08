@@ -25,9 +25,9 @@ just build
 
 push "target/wasm32-unknown-unknown/release_workflow/obelisk_deployer_flyio.wasm"
 push "target/wasm32-wasip2/release_webhook/webhook_healthcheck.wasm"
+push "target/wasm32-wasip2/release/activity_obelisk_client.wasm"
 
 echo "All components pushed and TOML file updated successfully."
 
 # obelisk.toml is parsed in toml.rs, snapshots will need updating.
 INSTA_UPDATE=always ./scripts/test.sh
-

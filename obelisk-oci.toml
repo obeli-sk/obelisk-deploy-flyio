@@ -19,15 +19,25 @@ exec.lock_expiry.seconds = 5
 forward_stdout = "stderr"
 forward_stderr = "stderr"
 
+[[activity_wasm]]
+name = "activity_obelisk_client"
+location.oci = "docker.io/getobelisk/components_flyio_activity_obelisk_client:2026-01-08@sha256:9c4455258bf6aec21a798d8c64c0b05d30e6bfe19cfc0a0382eff44644f8bc11"
+forward_stdout = "stderr"
+forward_stderr = "stderr"
+
 [[workflow]]
 name = "obelisk_deployer_flyio"
-location.oci = "docker.io/getobelisk/components_flyio_obelisk_deployer_flyio:2025-12-27@sha256:ea9ef97e57eae1f19351d6bca8ffd5794f48108f5f901ee6ee14e6ef1e2d623f"
-backtrace.sources = { ".../src/lib.rs" = "${OBELISK_TOML_DIR}/workflow/deployer-workflow/impl-flyio/src/lib.rs" }
+location.oci = "docker.io/getobelisk/components_flyio_obelisk_deployer_flyio:2026-01-08@sha256:9fdb8e5c1c9cdd81a109be4ab38c1f864456e6140ccdd0b824cf688266ce21da"
+backtrace.sources = {
+    ".../src/lib.rs" = "${OBELISK_TOML_DIR}/workflow/deployer-workflow/impl-flyio/src/lib.rs",
+    ".../src/testing.rs" = "${OBELISK_TOML_DIR}/workflow/deployer-workflow/impl-flyio/src/testing.rs",
+    ".../src/toml.rs" = "${OBELISK_TOML_DIR}/workflow/deployer-workflow/impl-flyio/src/toml.rs",
+}
 
 # This webhook is here only for `push-components.sh`
 [[webhook_endpoint]]
 name = "webhook_healthcheck"
-location.oci = "docker.io/getobelisk/components_flyio_webhook_healthcheck:2025-12-27@sha256:0eb99efffc7aa1f6e8cd4a957ef3d0cda3c24a739af1ead0b605210968d60e9f"
+location.oci = "docker.io/getobelisk/components_flyio_webhook_healthcheck:2026-01-08@sha256:6ca14d8eb74e0a734edef99366a27ba3bad4dba462c24974a9bf42556adc81cb"
 http_server = "webhook_server"
 routes = ["/obeliskhealthcheck"]
 

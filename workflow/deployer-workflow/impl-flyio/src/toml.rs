@@ -1,6 +1,7 @@
 use crate::generated::obelisk_flyio::workflow::types::ObeliskConfig;
 use crate::{
-    HEALTHCHECK_INTERNAL_PORT, SQLITE_DIRECTORY_PATH, VOLUME_MOUNT_PATH, WEBHOOK_INTERNAL_PORT,
+    API_INTERNAL_PORT, HEALTHCHECK_INTERNAL_PORT, SQLITE_DIRECTORY_PATH, VOLUME_MOUNT_PATH,
+    WEBHOOK_INTERNAL_PORT,
 };
 use anyhow::{Context, anyhow};
 use toml::Table;
@@ -35,7 +36,7 @@ wasm.codegen_cache.directory = "{VOLUME_MOUNT_PATH}/codegen"
 wasm.parallel_compilation = false
 wasm.backtrace.persist = false # Speed up execution
 
-api.listening_addr = "[::]:5005"
+api.listening_addr = "[::]:{API_INTERNAL_PORT}"
 webui.listening_addr = "[::]:8080"
 
 [database.sqlite]

@@ -55,7 +55,8 @@ cat <<EOF
     "health-check-deadline-secs": $HEALTH_CHECK_DEADLINE_SECS,
     "skip-cleanup-on-error": $SKIP_CLEANUP,
     "minio": $MINIO,
-    "vm-startup-deadline-secs": $VM_STARTUP_DEADLINE_SECS
+    "vm-startup-deadline-secs": $VM_STARTUP_DEADLINE_SECS,
+    "expose-api-server": null
 }
 ]
 EOF

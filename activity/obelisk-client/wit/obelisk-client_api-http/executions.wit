@@ -1,0 +1,16 @@
+package  obelisk-client:api-http@1.0.0-beta;
+
+interface executions {
+
+    type execution-id = string;
+
+    record execution-with-state {
+        execution-id: execution-id,
+    }
+
+    generate: func() -> result<execution-id>;
+
+    %list: func(endpoint-url: string) -> result<list<execution-with-state>, string>;
+
+    submit: func(endpoint-url: string, execution-id: execution-id, ffqn: string, params: string) -> result<_, string>;
+}

@@ -1,17 +1,23 @@
 package obelisk-flyio:workflow@1.0.0-beta;
 
 interface workflow {
-    use types.{obelisk-config, app-init-config, app-init-modify-error, app-init-error};
+    use types.{obelisk-config, app-init-config, app-init-modify-error, app-init-error, machine-id};
 
     /// Create the Fly.io app.
     /// Allocate an IP address.
-    /// Create and prepare a volume.
+    /// Start MinIO if enabled.
     prepare: func(
         org-slug: string,
         app-name: string,
-        obelisk-config: obelisk-config,
         minio: bool,
-        vm-startup-deadline-secs: u16,
+        minio-vm-startup-deadline-secs: u16,
+        ) -> result<option<machine-id>, app-init-modify-error>;
+
+    set-up-volume: func(
+        app-name: string,
+        obelisk-config: obelisk-config,
+        minio-machine-id: option<machine-id>,
+        temp-vm-startup-deadline-secs: u16,
         ) -> result<_, app-init-modify-error>;
 
     /// Wait until secrets are populated or app is deleted.
@@ -27,7 +33,8 @@ interface workflow {
         obelisk-version: string,
         litestream: bool,
         vm-startup-deadline-secs: u16,
-        ) -> result<_, app-init-modify-error>;
+        expose-api-server: option<u16>,
+        ) -> result<machine-id, app-init-modify-error>;
 
     /// Wait until health check passes, observing the deadline, or app is deleted.
     wait-for-health-check: func(
@@ -44,9 +51,10 @@ interface workflow {
         app-name: string,
         obelisk-config: obelisk-config,
         app-init-config: app-init-config,
-        ) -> result<_, app-init-error>;
+        ) -> result<machine-id, app-init-error>;
 }
 
 world exports {
     export workflow;
+    export testing;
 }

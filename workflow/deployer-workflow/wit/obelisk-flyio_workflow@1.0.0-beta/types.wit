@@ -2,6 +2,8 @@ package obelisk-flyio:workflow@1.0.0-beta;
 
 interface types {
 
+    type machine-id = string;
+
     // Same syntax as in obelisk.toml - "key" or "key=val"
     type env-var = string;
 
@@ -44,6 +46,7 @@ interface types {
         /// Should MinIO VM be instantiated and litestream configured?
         minio: bool,
         vm-startup-deadline-secs: u16,
+        expose-api-server: option<u16>,
     }
 
     variant app-init-modify-error {
