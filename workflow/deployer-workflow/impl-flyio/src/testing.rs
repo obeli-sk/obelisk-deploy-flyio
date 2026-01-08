@@ -34,7 +34,7 @@ fn restart_should_persist_state(
 
     // There should be no executions. Create a dummy one.
     let execution_id = api_http::executions::generate().expect("no external service involved");
-    let endpoint_url = url(&app_name, api_port, "");
+    let endpoint_url = url(app_name, api_port, "");
     api_http::executions::submit(
         &endpoint_url,
         &execution_id,
@@ -51,10 +51,10 @@ fn restart_should_persist_state(
     ensure!(old_executions.contains(&execution_id));
 
     // Delete the VM
-    activity_fly_http::machines::delete(&app_name, &obelisk_machine_id, true).anyhow()?;
+    activity_fly_http::machines::delete(app_name, &obelisk_machine_id, true).anyhow()?;
     // Delete the single volume
     let volume_id = {
-        let volumes: Vec<_> = activity_fly_http::volumes::list(&app_name)
+        let volumes: Vec<_> = activity_fly_http::volumes::list(app_name)
             .anyhow()?
             .into_iter()
             .filter(|volume| volume.state == "created")
@@ -63,10 +63,10 @@ fn restart_should_persist_state(
         ensure!(volumes.len() == 1, "one volume expected, got {:?}", volumes);
         volumes.into_iter().next().unwrap().id
     };
-    activity_fly_http::volumes::delete(&app_name, &volume_id).anyhow()?;
+    activity_fly_http::volumes::delete(app_name, &volume_id).anyhow()?;
     // Recreate the volume
     let minio_machine_id = {
-        let machines = activity_fly_http::machines::list(&app_name).anyhow()?;
+        let machines = activity_fly_http::machines::list(app_name).anyhow()?;
         ensure!(
             machines.len() == 1,
             "one machine expected, got {:?}",
@@ -75,20 +75,20 @@ fn restart_should_persist_state(
         machines.into_iter().next().unwrap().id
     };
     imp_workflow::set_up_volume(
-        &app_name,
+        app_name,
         &obelisk_config,
         Some(&minio_machine_id),
         init_config.vm_startup_deadline_secs,
     )?;
     // Create and start the final VM.
     let _machine_id = imp_workflow::start_final_vm(
-        &app_name,
+        app_name,
         &obelisk_config.obelisk_version,
         init_config.minio,
         init_config.vm_startup_deadline_secs,
         init_config.expose_api_server,
     )?;
-    imp_workflow::wait_for_health_check(&app_name, init_config.health_check_deadline_secs)?;
+    imp_workflow::wait_for_health_check(app_name, init_config.health_check_deadline_secs)?;
 
     // Make sure the backup worked
     let new_executions: HashSet<String> = HashSet::from_iter(
