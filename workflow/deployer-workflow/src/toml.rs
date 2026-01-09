@@ -9,7 +9,7 @@ use toml::Table;
 pub(crate) fn serialize_obelisk_toml(config: &ObeliskConfig) -> Result<String, anyhow::Error> {
     const HEALTHCHECK_SERVER_NAME: &str = "healthcheck_server";
     const WEBHOOK_SERVER_NAME: &str = "webhook_server";
-    const OBELISK_OCI_TOML: &str = include_str!("../../../../obelisk-oci.toml");
+    const OBELISK_OCI_TOML: &str = include_str!("../../../obelisk-oci.toml");
 
     let webhook_healthcheck_oci = {
         let val: toml::Value = toml::from_str(OBELISK_OCI_TOML).expect("Invalid TOML");
