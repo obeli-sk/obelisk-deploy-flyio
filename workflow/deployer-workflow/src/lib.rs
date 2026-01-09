@@ -78,6 +78,7 @@ const HEALTHCHECK_INTERNAL_PORT: u16 = 9091;
 const HEALTHCHECK_EXTERNAL_PORT: u16 = 444;
 const SLEEP_BETWEEN_RETRIES: Duration = Duration::from_secs(10);
 const SLEEP_AFTER_TEMP_VM_SHUTDOWN: Duration = Duration::from_secs(5);
+const LITESTREAM_ENTRYPOINT_PATH: &str = formatcp!("{VOLUME_MOUNT_PATH}/litestream-entrypoint.sh");
 
 fn obelisk_image(obelisk_version: &str) -> String {
     format!("getobelisk/obelisk:{obelisk_version}-ubuntu-litestream")
@@ -222,8 +223,6 @@ fn setup_volume(
     .map_err(AppInitModifyError::VerifyError)?;
 
     if let Some(minio_machine_id) = minio_machine_id {
-        // Get the machine-id of MinIO VM
-
         write_file(
             LITESTREAM_CONFIG_PATH,
             &format!(
@@ -235,6 +234,20 @@ dbs:
       access-key-id: "{MINIO_ACCESS_KEY_ID}"
       secret-access-key: "{MINIO_SECRET_ACCESS_KEY}"
 "#
+            ),
+        )?;
+
+        write_file(
+            LITESTREAM_ENTRYPOINT_PATH,
+            &format!(
+                r#"
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+litestream restore -if-replica-exists --config {LITESTREAM_CONFIG_PATH} {SQLITE_FILE_PATH}
+exec litestream replicate --config {LITESTREAM_CONFIG_PATH} --exec 'obelisk server run --config {OBELISK_TOML_PATH}'
+        "#
             ),
         )?;
     }
@@ -368,22 +381,23 @@ fn start_final_vm(
     expose_api_server: Option<u16>,
 ) -> Result<MachineId, AppInitModifyError> {
     let entrypoint = if litestream {
-        Some(vec!["/usr/local/bin/litestream".to_string()])
+        Some(vec![
+            "/usr/bin/env".to_string(),
+            "bash".to_string(),
+            LITESTREAM_ENTRYPOINT_PATH.to_string(),
+        ])
     } else {
         None
     };
-    let cmd = vec!["server", "run", "--config", OBELISK_TOML_PATH];
     let cmd = if litestream {
-        let cmd = cmd.join(" ");
-        vec![
-            "replicate".to_string(),
-            "--config".to_string(),
-            LITESTREAM_CONFIG_PATH.to_string(),
-            "--exec".to_string(),
-            format!("/obelisk/obelisk {cmd}"),
-        ]
+        None // Same as `Some(vec![])`, $@ will be empty.
     } else {
-        cmd.into_iter().map(ToString::to_string).collect()
+        Some(
+            vec!["server", "run", "--config", OBELISK_TOML_PATH]
+                .into_iter()
+                .map(ToString::to_string)
+                .collect(),
+        )
     };
     let mut services = vec![
         // Expose health check server as https://[::]:HEALTHCHECK_EXTERNAL_PORT
@@ -429,7 +443,7 @@ fn start_final_vm(
             }),
             auto_destroy: None,
             init: Some(InitConfig {
-                cmd: Some(cmd),
+                cmd,
                 entrypoint,
                 exec: None,
                 kernel_args: None,
