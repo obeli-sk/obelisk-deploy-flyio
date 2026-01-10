@@ -29,9 +29,9 @@ forward_stderr = "stderr"
 name = "obelisk_deployer_flyio"
 location.oci = "docker.io/getobelisk/components_flyio_obelisk_deployer_flyio:2026-01-08@sha256:9fdb8e5c1c9cdd81a109be4ab38c1f864456e6140ccdd0b824cf688266ce21da"
 backtrace.sources = {
-    ".../src/lib.rs" = "${OBELISK_TOML_DIR}/workflow/deployer-workflow/impl-flyio/src/lib.rs",
-    ".../src/testing.rs" = "${OBELISK_TOML_DIR}/workflow/deployer-workflow/impl-flyio/src/testing.rs",
-    ".../src/toml.rs" = "${OBELISK_TOML_DIR}/workflow/deployer-workflow/impl-flyio/src/toml.rs",
+    ".../src/lib.rs" = "${OBELISK_TOML_DIR}/workflow/deployer-workflow/src/lib.rs",
+    ".../src/testing.rs" = "${OBELISK_TOML_DIR}/workflow/deployer-workflow/src/testing.rs",
+    ".../src/toml.rs" = "${OBELISK_TOML_DIR}/workflow/deployer-workflow/src/toml.rs",
 }
 
 # This webhook is here only for `push-components.sh`

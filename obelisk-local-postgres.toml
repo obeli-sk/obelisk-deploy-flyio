@@ -36,9 +36,9 @@ forward_stderr = "stderr"
 name = "obelisk_deployer_flyio"
 location.path = "${OBELISK_TOML_DIR}/target/wasm32-unknown-unknown/release_workflow/obelisk_deployer_flyio.wasm"
 backtrace.sources = {
-    ".../src/lib.rs" = "${OBELISK_TOML_DIR}/workflow/deployer-workflow/impl-flyio/src/lib.rs",
-    ".../src/testing.rs" = "${OBELISK_TOML_DIR}/workflow/deployer-workflow/impl-flyio/src/testing.rs",
-    ".../src/toml.rs" = "${OBELISK_TOML_DIR}/workflow/deployer-workflow/impl-flyio/src/toml.rs",
+    ".../src/lib.rs" = "${OBELISK_TOML_DIR}/workflow/deployer-workflow/src/lib.rs",
+    ".../src/testing.rs" = "${OBELISK_TOML_DIR}/workflow/deployer-workflow/src/testing.rs",
+    ".../src/toml.rs" = "${OBELISK_TOML_DIR}/workflow/deployer-workflow/src/toml.rs",
 }
 # backtrace.ignore_component_digest = true
 

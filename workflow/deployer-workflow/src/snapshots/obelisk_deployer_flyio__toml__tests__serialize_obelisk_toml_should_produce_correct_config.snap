@@ -1,5 +1,5 @@
 ---
-source: workflow/deployer-workflow/impl-flyio/src/toml.rs
+source: workflow/deployer-workflow/src/toml.rs
 expression: toml
 ---
 [[activity_wasm]]
