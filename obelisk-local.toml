@@ -29,7 +29,7 @@ forward_stderr = "stderr"
 
 [[activity_wasm]]
 name = "activity_obelisk_client"
-location.path = "${OBELISK_TOML_DIR}/target/wasm32-wasip2/release/activity_obelisk_client.wasm"
+location.oci = "docker.io/getobelisk/components_obelisk_activity_obelisk_client_http:2026-01-10@sha256:ca99fa1f0b08d1883784baff2966e07abe36b450b63d8deac25f8abf8cecd0ce"
 forward_stdout = "stderr"
 forward_stderr = "stderr"
 

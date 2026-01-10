@@ -2,7 +2,6 @@ clean:
 	cargo clean
 
 build:
-	(cd activity/obelisk-client && cargo build --release)
 	(cd workflow/deployer-workflow/ && cargo build --profile release_workflow)
 	(cd webhook/healthcheck && cargo build --profile release_webhook)
 
@@ -13,7 +12,9 @@ test-integration:
 	(cd activity/obelisk-client && TEST_ENDPOINT_URL=http://localhost:5005 cargo nextest run -- --ignored)
 
 verify:
-	obelisk server verify --config ${CONFIG:-obelisk-local.toml}
+	obelisk server verify --config obelisk-local.toml
+	obelisk server verify --config obelisk-local-postgres.toml
+	obelisk server verify --config obelisk-oci.toml
 
 serve:
 	obelisk server run --config ${CONFIG:-obelisk-local.toml}
