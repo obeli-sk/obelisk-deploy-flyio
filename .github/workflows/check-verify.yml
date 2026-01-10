@@ -44,14 +44,6 @@ jobs:
       - name: Build WASM components
         run: nix develop --command just build
 
-      - name: Verify obelisk-local.toml
+      - name: Verify configs
         run: |
-          nix develop --command obelisk server verify --config obelisk-local.toml --ignore-missing-env-vars
-
-      - name: Verify obelisk-local-postgres.toml
-        run: |
-          nix develop --command obelisk server verify --config obelisk-local-postgres.toml --ignore-missing-env-vars
-
-      - name: Verify obelisk-oci.toml
-        run: |
-          nix develop --command obelisk server verify --config obelisk-oci.toml --ignore-missing-env-vars
+          nix develop --command just verify
