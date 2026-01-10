@@ -11,10 +11,10 @@ test:
 test-integration:
 	(cd activity/obelisk-client && TEST_ENDPOINT_URL=http://localhost:5005 cargo nextest run -- --ignored)
 
-verify:
-	obelisk server verify --config obelisk-local.toml
-	obelisk server verify --config obelisk-local-postgres.toml
-	obelisk server verify --config obelisk-oci.toml
+verify params="":
+	obelisk server verify --config obelisk-local.toml {{params}}
+	obelisk server verify --config obelisk-local-postgres.toml {{params}}
+	obelisk server verify --config obelisk-oci.toml {{params}}
 
 serve:
 	obelisk server run --config ${CONFIG:-obelisk-local.toml}

@@ -46,4 +46,4 @@ jobs:
 
       - name: Verify configs
         run: |
-          nix develop --command just verify
+          nix develop --command just verify --ignore-missing-env-vars
