@@ -1,0 +1,13 @@
+package obelisk-client:api-http-obelisk-schedule@1.0.0-beta;
+
+interface executions {
+  use obelisk:types/execution@4.0.0.{execution-id};
+  use obelisk-client:api-http/executions@1.0.0-beta.{execution-with-state};
+  use obelisk:types/time@4.0.0.{schedule-at};
+
+  generate-schedule: func(schedule-at: schedule-at) -> execution-id;
+
+  list-schedule: func(schedule-at: schedule-at, endpoint-url: string) -> execution-id;
+
+  submit-schedule: func(schedule-at: schedule-at, endpoint-url: string, execution-id: execution-id, ffqn: string, params: string) -> execution-id;
+}

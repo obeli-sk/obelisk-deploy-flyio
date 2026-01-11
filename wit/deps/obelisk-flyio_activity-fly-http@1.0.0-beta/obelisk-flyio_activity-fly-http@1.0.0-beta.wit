@@ -1,0 +1,279 @@
+package obelisk-flyio:activity-fly-http@1.0.0-beta;
+
+interface regions {
+  enum region {
+    ams,
+    arn,
+    atl,
+    bog,
+    bom,
+    bos,
+    cdg,
+    den,
+    dfw,
+    ewr,
+    eze,
+    fra,
+    gdl,
+    gig,
+    gru,
+    hkg,
+    iad,
+    jnb,
+    lax,
+    lhr,
+    mad,
+    mia,
+    nrt,
+    ord,
+    otp,
+    phx,
+    qro,
+    scl,
+    sea,
+    sin,
+    sjc,
+    syd,
+    waw,
+    yul,
+    yyz,
+  }
+}
+interface apps {
+  record app {
+    name: string,
+    id: string,
+  }
+
+  get: func(app-name: string) -> result<option<app>, string>;
+
+  put: func(org-slug: string, app-name: string) -> result<app, string>;
+
+  %list: func(org-slug: string) -> result<list<app>, string>;
+
+  delete: func(app-name: string, force: bool) -> result<_, string>;
+}
+interface volumes {
+  use regions.{region};
+
+  type volume-id = string;
+
+  record volume {
+    id: string,
+    name: string,
+    state: string,
+    region: region,
+    size-gb: u32,
+    encrypted: bool,
+    attached-machine-id: option<string>,
+    host-status: string,
+    created-at: string,
+    blocks: u32,
+    block-size: u32,
+    blocks-free: u32,
+    blocks-avail: u32,
+    bytes-used: u32,
+    bytes-total: u32,
+  }
+
+  record volume-create-request {
+    name: string,
+    size-gb: u32,
+    region: region,
+    require-unique-zone: option<bool>,
+  }
+
+  %list: func(app-name: string) -> result<list<volume>, string>;
+
+  create: func(app-name: string, request: volume-create-request) -> result<volume, string>;
+
+  get: func(app-name: string, volume-id: volume-id) -> result<volume, string>;
+
+  extend: func(app-name: string, volume-id: volume-id, new-size-gb: u32) -> result<_, string>;
+
+  delete: func(app-name: string, volume-id: volume-id) -> result<_, string>;
+}
+interface machines {
+  use regions.{region};
+  use volumes.{volume-id};
+
+  type machine-id = string;
+
+  enum machine-state {
+    created,
+    starting,
+    started,
+    stopping,
+    stopped,
+    suspending,
+    suspended,
+    replacing,
+    replaced,
+    destroying,
+    destroyed,
+  }
+
+  enum host-status {
+    ok,
+    unknown,
+    unreachable,
+  }
+
+  record mount {
+    volume: volume-id,
+    path: string,
+  }
+
+  enum cpu-kind {
+    shared,
+    performance,
+  }
+
+  record guest-config {
+    cpu-kind: option<cpu-kind>,
+    cpus: option<u64>,
+    memory-mb: option<u64>,
+    kernel-args: option<list<string>>,
+  }
+
+  enum restart-policy {
+    no,
+    always,
+    on-failure,
+  }
+
+  record machine-restart {
+    max-retries: option<u32>,
+    policy: restart-policy,
+  }
+
+  record init-config {
+    cmd: option<list<string>>,
+    entrypoint: option<list<string>>,
+    exec: option<list<string>>,
+    kernel-args: option<list<string>>,
+    swap-size-mb: option<u64>,
+    tty: option<bool>,
+  }
+
+  record stop-config {
+    signal: option<string>,
+    timeout: option<u64>,
+  }
+
+  record exec-response {
+    exit-code: option<s32>,
+    exit-signal: option<s32>,
+    stderr: option<string>,
+    stdout: option<string>,
+  }
+
+  enum service-protocol {
+    tcp,
+    udp,
+  }
+
+  enum port-handler {
+    http,
+    tls,
+    pg,
+  }
+
+  record port-config {
+    port: u16,
+    handlers: list<port-handler>,
+  }
+
+  record service-config {
+    internal-port: u16,
+    protocol: service-protocol,
+    ports: list<port-config>,
+  }
+
+  record machine-config {
+    image: string,
+    guest: option<guest-config>,
+    auto-destroy: option<bool>,
+    init: option<init-config>,
+    env: option<list<tuple<string, string>>>,
+    restart: option<machine-restart>,
+    stop-config: option<stop-config>,
+    mounts: option<list<mount>>,
+    services: option<list<service-config>>,
+  }
+
+  record machine {
+    config: machine-config,
+    created-at: string,
+    updated-at: string,
+    id: string,
+    instance-id: string,
+    name: string,
+    state: machine-state,
+    region: region,
+    host-status: host-status,
+  }
+
+  %list: func(app-name: string) -> result<list<machine>, string>;
+
+  get: func(app-name: string, machine-id: machine-id) -> result<option<machine>, string>;
+
+  create: func(app-name: string, machine-name: string, machine-config: machine-config, region: option<region>) -> result<string, string>;
+
+  update: func(app-name: string, machine-id: machine-id, machine-config: machine-config, region: option<region>) -> result<_, string>;
+
+  suspend: func(app-name: string, machine-id: machine-id) -> result<_, string>;
+
+  stop: func(app-name: string, machine-id: machine-id) -> result<_, string>;
+
+  start: func(app-name: string, machine-id: machine-id) -> result<_, string>;
+
+  restart: func(app-name: string, machine-id: machine-id) -> result<_, string>;
+
+  delete: func(app-name: string, machine-id: machine-id, force: bool) -> result<_, string>;
+
+  exec: func(app-name: string, machine-id: machine-id, command: list<string>) -> result<exec-response, string>;
+
+  exec-check-success: func(app-name: string, machine-id: machine-id, command: list<string>) -> result<exec-response, string>;
+}
+interface secrets {
+  record secret {
+    name: string,
+    digest: string,
+  }
+
+  %list: func(app-name: string) -> result<list<secret>, string>;
+
+  delete: func(app-name: string, secret-name: string) -> result<_, string>;
+}
+interface ips {
+  use regions.{region};
+
+  type ip-address = string;
+
+  record ipv4-config {
+    shared: bool,
+    region: option<region>,
+  }
+
+  record ipv6-config {
+    region: option<region>,
+  }
+
+  variant ip-variant {
+    ipv4(ipv4-config),
+    ipv6(ipv6-config),
+    ipv6-private,
+  }
+
+  record ip-detail {
+    ip: ip-address,
+    ip-variant: ip-variant,
+  }
+
+  allocate: func(app-name: string, config: ip-variant, pre-existing-ips: list<ip-detail>) -> result<ip-address, string>;
+
+  %list: func(app-name: string) -> result<list<ip-detail>, string>;
+
+  release: func(app-name: string, ip: ip-address) -> result<_, string>;
+}
