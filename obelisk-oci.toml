@@ -5,7 +5,7 @@ log.stdout.enabled = true
 
 [[activity_wasm]]
 name = "activity_fly_http"
-location.oci = "docker.io/getobelisk/components_flyio_activity_fly_http:2025-11-02@sha256:af958625f8e056bceeb33ec768abde32c716866305ee6e1abc6f63fc759079db"
+location.oci = "docker.io/getobelisk/components_fly_activity_fly_http:2026-01-10@sha256:4985d2a91d1edcb2312617be37ebb8a4599c886e714b47227c69dbd15c51b2f9"
 exec.lock_expiry.seconds = 15
 env_vars = ["FLY_API_TOKEN"]
 forward_stdout = "stderr"
