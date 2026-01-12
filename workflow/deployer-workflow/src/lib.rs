@@ -13,6 +13,7 @@ use generated::{
         types::time::{Duration as SchedulingDuration, ScheduleAt},
         workflow::workflow_support,
     },
+    obelisk_components::generic_http::http,
     obelisk_flyio::{
         activity_fly_http::{
             self,
@@ -29,7 +30,6 @@ use generated::{
             workflow::{self as workflow_import, AppInitError, ObeliskConfig},
         },
     },
-    testing::http::http_get,
 };
 use hashbrown::{HashMap, HashSet};
 use std::time::Duration;
@@ -532,7 +532,7 @@ fn check_health(app_name: &str, health_check_deadline_secs: u16) -> Result<(), A
 
     let mut join_sets = HashMap::new();
     loop {
-        let resp = http_get::get_resp(&url).map(|resp| resp.status_code);
+        let resp = http::request(http::Method::Get, &url, &[], None).map(|resp| resp.status_code);
         let reason = match resp {
             Ok(200..300) => return Ok(()),
             Ok(other) => format!("wrong status code: {other}"),

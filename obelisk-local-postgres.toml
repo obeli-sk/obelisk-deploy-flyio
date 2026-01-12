@@ -7,10 +7,14 @@ database.postgres.password = "${POSTGRES_PASSWORD}"
 database.postgres.db_name =  "${POSTGRES_DATABASE}"
 database.postgres.provision_policy = "auto"
 
-log.stdout.enabled = true
+[log.file]
+enabled = true
+target = true
+level="info"
+directory = "."
+prefix = "obelisk.log" # File name prefix
 
 [[activity_wasm]]
-# For health checking.
 name = "activity_fly_http"
 location.oci = "docker.io/getobelisk/components_fly_activity_fly_http:2026-01-10@sha256:4985d2a91d1edcb2312617be37ebb8a4599c886e714b47227c69dbd15c51b2f9"
 exec.lock_expiry.seconds = 15
@@ -19,12 +23,11 @@ forward_stdout = "stderr"
 forward_stderr = "stderr"
 max_retries = 6
 
+# HTTP Client for health checking.
 [[activity_wasm]]
-name = "http_activity"
-location.oci = "docker.io/getobelisk/test_programs_http_get_activity:2025-09-28@sha256:8131d9cafbdf06dbaf7a3b4e629791c9cf3dc1553df9418b34f25ab900b72929"
+name = "activity_http_generic"
+location.oci = "docker.io/getobelisk/components_activity-http-generic_activity_http_generic:2026-01-12-2@sha256:230b9a90661470aadd75724ebd9c2f8c914b8fe52b850773725e64f3807a4151"
 exec.lock_expiry.seconds = 5
-forward_stdout = "stderr"
-forward_stderr = "stderr"
 
 [[activity_wasm]]
 name = "activity_obelisk_client"

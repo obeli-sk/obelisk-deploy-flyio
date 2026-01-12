@@ -1,7 +1,13 @@
 api.listening_addr = "127.0.0.1:5005"
 webui.listening_addr = "127.0.0.1:8080"
 
-log.stdout.enabled = true
+
+[log.file]
+enabled = true
+target = true
+level="info"
+directory = "."
+prefix = "obelisk.log" # File name prefix
 
 [[activity_wasm]]
 name = "activity_fly_http"
@@ -12,12 +18,11 @@ forward_stdout = "stderr"
 forward_stderr = "stderr"
 max_retries = 6
 
+# HTTP Client for health checking.
 [[activity_wasm]]
-name = "http_activity"
-location.oci = "docker.io/getobelisk/test_programs_http_get_activity:2025-09-28@sha256:8131d9cafbdf06dbaf7a3b4e629791c9cf3dc1553df9418b34f25ab900b72929"
+name = "activity_http_generic"
+location.oci = "docker.io/getobelisk/components_activity-http-generic_activity_http_generic:2026-01-12-2@sha256:230b9a90661470aadd75724ebd9c2f8c914b8fe52b850773725e64f3807a4151"
 exec.lock_expiry.seconds = 5
-forward_stdout = "stderr"
-forward_stderr = "stderr"
 
 [[activity_wasm]]
 name = "activity_obelisk_client"
