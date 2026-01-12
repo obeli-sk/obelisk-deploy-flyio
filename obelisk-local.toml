@@ -41,7 +41,7 @@ backtrace.sources = {
     ".../src/testing.rs" = "${OBELISK_TOML_DIR}/workflow/deployer-workflow/src/testing.rs",
     ".../src/toml.rs" = "${OBELISK_TOML_DIR}/workflow/deployer-workflow/src/toml.rs",
 }
-# backtrace.ignore_component_digest = true
+backtrace.ignore_component_digest = true
 
 [[http_server]]
 name = "webhook_server"
