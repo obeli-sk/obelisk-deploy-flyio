@@ -139,9 +139,24 @@ Push the secrets using stargazers' `.envrc` file.
 ./scripts/secrets-send.sh ../stargazers/.envrc
 ```
 
+# Testing Litestream backup and restore
+Start the server:
+```sh
+just build serve
+```
+Submit the execution:
+```sh
+just start-restart-should-persist-state "$(./scripts/json-start-restart-should-persist-state-itself.sh)"
+```
+While the execution is running, push the `FLY_API_TOKEN` secret:
+```sh
+ ./scripts/secrets-send.sh .envrc
+ ```
+
+
 # Using Fly.io activities directly
 
-Check out the [components-flyio](https://github.com/obeli-sk/components-flyio) repo on how to interact with Fly.io APIs, including:
+Check out the [components](https://github.com/obeli-sk/components) repo on how to interact with Fly.io APIs, including:
 * Apps
 * Volumes
 * VMs
