@@ -179,6 +179,7 @@ fn setup_volume(
                 path: VOLUME_MOUNT_PATH.to_string(),
             }]),
             services: None,
+            files: None,
         },
         Some(REGION),
     )
@@ -347,6 +348,7 @@ fn minio_start(app_name: &str) -> Result<String, AppInitModifyError> {
             stop_config: None,
             mounts: None,
             services: None,
+            files: None,
         },
         Some(REGION),
     )
@@ -461,6 +463,7 @@ fn start_final_vm(
                 path: VOLUME_MOUNT_PATH.to_string(),
             }]),
             services: Some(services),
+            files: None,
         },
         Some(REGION),
     )
