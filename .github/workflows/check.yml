@@ -87,3 +87,30 @@ jobs:
       - name: cargo clippy
         run: nix develop .#noObelisk --command cargo clippy --workspace --all-targets -- -D warnings
 
+  check-wit-deps:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: nixbuild/nix-quick-install-action@v30
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+          nix_conf: |
+            extra-substituters = https://cache.garnix.io
+            extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g
+      - name: Populate the nix store
+        run: |
+          nix develop --command echo
+
+      - run: nix develop --command obelisk generate wit-deps obelisk-external.toml wit/deps --overwrite
+
+      - run: cat dev-deps.txt
+
+      - run: |
+          if git diff --quiet ; then
+              echo "No changes"
+          else
+              echo "Changes in wit-deps detected:"
+              git diff
+              exit 1
+          fi
