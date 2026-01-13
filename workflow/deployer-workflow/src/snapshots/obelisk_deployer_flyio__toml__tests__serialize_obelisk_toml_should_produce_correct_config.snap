@@ -53,6 +53,12 @@ name = "healthcheck_server"
 listening_addr = "0.0.0.0:9090"
 name = "webhook_server"
 
+[log.file]
+directory = "/var/log"
+enabled = true
+prefix = "obelisk.log"
+target = true
+
 [log.stdout]
 enabled = true
 level = "WARN,obelisk=info"
@@ -73,7 +79,7 @@ name = "webhook_healthcheck"
 routes = [""]
 
 [webhook_endpoint.location]
-oci = "docker.io/getobelisk/components_flyio_webhook_healthcheck:2026-01-12@sha256:247c942016ddeceba2dc519bab3e95b67ee06a21dc05e2e66b391ca923fdf141"
+oci = "docker.io/getobelisk/components_flyio_webhook_healthcheck:2026-01-13@sha256:c5cdf4eeef0863a4bb66b067b525111c84be1772ff849872d026fe4c5cbaa408"
 
 [[webhook_endpoint]]
 env_vars = ["GITHUB_WEBHOOK_SECRET"]
