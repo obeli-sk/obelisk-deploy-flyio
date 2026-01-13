@@ -47,6 +47,12 @@ pragma = {{ "cache_size" = "3000" }}
 enabled = true
 level = "WARN,obelisk=info"
 
+[log.file]
+enabled = true
+target = true
+directory = "/var/log"
+prefix = "obelisk.log"
+
 [[http_server]]
 name = "{HEALTHCHECK_SERVER_NAME}"
 listening_addr = "0.0.0.0:{HEALTHCHECK_INTERNAL_PORT}"
