@@ -21,7 +21,7 @@ max_retries = 6
 # HTTP Client for health checking.
 [[activity_wasm]]
 name = "activity_http_generic"
-location.oci = "docker.io/getobelisk/components_activity-http-generic_activity_http_generic:2026-01-12-2@sha256:230b9a90661470aadd75724ebd9c2f8c914b8fe52b850773725e64f3807a4151"
+location.oci = "docker.io/getobelisk/components_http_activity_http_generic:2026-01-13@sha256:f64b64aa176224645a21d583312ad1e832afae57af138998711771c4411e3b3e"
 exec.lock_expiry.seconds = 5
 
 [[activity_wasm]]
