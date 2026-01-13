@@ -1,13 +1,11 @@
 [[activity_wasm]]
 name = "activity_fly_http"
 location.oci = "docker.io/getobelisk/components_fly_activity_fly_http:2026-01-13-1@sha256:7b39b252793821b0b7a1cfb4c330fa41c869a8895cfd0ee69c9a9b7e2d3d1b9d"
-env_vars = ["IGNORE"]
 
 # HTTP Client for health checking.
 [[activity_wasm]]
 name = "activity_http_generic"
 location.oci = "docker.io/getobelisk/components_http_activity_http_generic:2026-01-13@sha256:f64b64aa176224645a21d583312ad1e832afae57af138998711771c4411e3b3e"
-exec.lock_expiry.seconds = 5
 
 [[activity_wasm]]
 name = "activity_obelisk_client"

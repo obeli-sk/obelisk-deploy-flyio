@@ -12,7 +12,7 @@ prefix = "obelisk.log" # File name prefix
 [[activity_wasm]]
 name = "activity_fly_http"
 location.oci = "docker.io/getobelisk/components_fly_activity_fly_http:2026-01-13-1@sha256:7b39b252793821b0b7a1cfb4c330fa41c869a8895cfd0ee69c9a9b7e2d3d1b9d"
-exec.lock_expiry.seconds = 15
+exec.lock_expiry.seconds = 30
 env_vars = ["FLY_API_TOKEN"]
 forward_stdout = "stderr"
 forward_stderr = "stderr"

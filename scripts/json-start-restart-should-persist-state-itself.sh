@@ -12,8 +12,10 @@ SKIP_CLEANUP=${SKIP_CLEANUP:-false}
 MINIO=true
 VM_STARTUP_DEADLINE_SECS=${VM_STARTUP_DEADLINE_SECS:-30}
 
-WORKFLOW_OCI=$(awk '/name *= *"obelisk_deployer_flyio"/ {getline; match($0, /"([^"]+)"/, a); print a[1]}' obelisk-oci.toml)
+ACTIVITY_FLY_OCI=$(awk '/name *= *"activity_fly_http"/ {getline; match($0, /"([^"]+)"/, a); print a[1]}' obelisk-oci.toml)
+ACTIVITY_HTTP_OCI=$(awk '/name *= *"activity_http_generic"/ {getline; match($0, /"([^"]+)"/, a); print a[1]}' obelisk-oci.toml)
 ACTIVITY_OBELISK_CLIENT_OCI=$(awk '/name *= *"activity_obelisk_client"/ {getline; match($0, /"([^"]+)"/, a); print a[1]}' obelisk-oci.toml)
+WORKFLOW_OCI=$(awk '/name *= *"obelisk_deployer_flyio"/ {getline; match($0, /"([^"]+)"/, a); print a[1]}' obelisk-oci.toml)
 
 cat <<EOF
 [
@@ -24,14 +26,14 @@ cat <<EOF
     "activity-wasm-list":[
         {
             "name": "activity_fly_http",
-            "location-oci": "docker.io/getobelisk/components_flyio_activity_fly_http:2025-11-02@sha256:af958625f8e056bceeb33ec768abde32c716866305ee6e1abc6f63fc759079db",
+            "location-oci": "$ACTIVITY_FLY_OCI",
             "env-vars":["FLY_API_TOKEN"],
             "lock-expiry-seconds": 15,
             "max-retries": 6
         },
         {
-            "name": "http_activity",
-            "location-oci": "docker.io/getobelisk/test_programs_http_get_activity:2025-09-28@sha256:8131d9cafbdf06dbaf7a3b4e629791c9cf3dc1553df9418b34f25ab900b72929",
+            "name": "activity_http_generic",
+            "location-oci": "$ACTIVITY_HTTP_OCI",
             "lock-expiry-seconds": 5
         },
         {

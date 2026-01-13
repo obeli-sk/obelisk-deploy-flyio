@@ -12,7 +12,7 @@ prefix = "obelisk.log" # File name prefix
 [[activity_wasm]]
 name = "activity_fly_http"
 location.oci = "docker.io/getobelisk/components_fly_activity_fly_http:2026-01-13-1@sha256:7b39b252793821b0b7a1cfb4c330fa41c869a8895cfd0ee69c9a9b7e2d3d1b9d"
-exec.lock_expiry.seconds = 15
+exec.lock_expiry.seconds = 30
 env_vars = ["FLY_API_TOKEN"]
 forward_stdout = "stderr"
 forward_stderr = "stderr"
@@ -21,7 +21,7 @@ max_retries = 6
 # HTTP Client for health checking.
 [[activity_wasm]]
 name = "activity_http_generic"
-location.oci = "docker.io/getobelisk/components_activity-http-generic_activity_http_generic:2026-01-12-2@sha256:230b9a90661470aadd75724ebd9c2f8c914b8fe52b850773725e64f3807a4151"
+location.oci = "docker.io/getobelisk/components_http_activity_http_generic:2026-01-13@sha256:f64b64aa176224645a21d583312ad1e832afae57af138998711771c4411e3b3e"
 exec.lock_expiry.seconds = 5
 
 [[activity_wasm]]
