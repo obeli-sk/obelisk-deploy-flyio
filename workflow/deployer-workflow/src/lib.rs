@@ -5,6 +5,7 @@ mod generated {
     include!(concat!(env!("OUT_DIR"), "/any.rs"));
 }
 use assert_matches::assert_matches;
+use base64::{Engine as _, engine::general_purpose};
 use const_format::formatcp;
 use generated::{
     export,
@@ -41,6 +42,7 @@ use crate::generated::{
         log::log::warn,
         types::join_set::{JoinSet, ResponseId},
     },
+    obelisk_flyio::activity_fly_http::machines::{ExecConfig, FileConfig},
 };
 
 struct Component;
@@ -68,7 +70,7 @@ const FINAL_VM_SWAP_MB: u64 = 256;
 const VOLUME_MOUNT_PATH: &str = "/volume";
 const OBELISK_TOML_PATH: &str = formatcp!("{VOLUME_MOUNT_PATH}/obelisk.toml");
 const OBELISK_BIN_PATH: &str = "/obelisk/obelisk";
-const LITESTREAM_CONFIG_PATH: &str = formatcp!("{VOLUME_MOUNT_PATH}/litestream.yml");
+const LITESTREAM_CONFIG_PATH: &str = "/etc/litestream.yml";
 const SQLITE_DIRECTORY_PATH: &str = formatcp!("{VOLUME_MOUNT_PATH}/obelisk-sqlite");
 const SQLITE_FILE_PATH: &str = formatcp!("{SQLITE_DIRECTORY_PATH}/obelisk.sqlite");
 const REGION: Region = Region::Ams;
@@ -78,7 +80,7 @@ const HEALTHCHECK_INTERNAL_PORT: u16 = 9091;
 const HEALTHCHECK_EXTERNAL_PORT: u16 = 444;
 const SLEEP_BETWEEN_RETRIES: Duration = Duration::from_secs(10);
 const SLEEP_AFTER_TEMP_VM_SHUTDOWN: Duration = Duration::from_secs(5);
-const LITESTREAM_ENTRYPOINT_PATH: &str = formatcp!("{VOLUME_MOUNT_PATH}/litestream-entrypoint.sh");
+const LITESTREAM_ENTRYPOINT_PATH: &str = "/usr/local/bin/litestream-entrypoint.sh";
 
 fn obelisk_image(obelisk_version: &str) -> String {
     format!("getobelisk/obelisk:{obelisk_version}-ubuntu-litestream")
@@ -132,7 +134,6 @@ fn setup_volume(
     app_name: &str,
     obelisk_version: &str,
     obelisk_toml: &str,
-    minio_machine_id: Option<&str>,
     temp_vm_startup_deadline_secs: u16,
 ) -> Result<(), AppInitModifyError> {
     // Create a volume
@@ -201,6 +202,10 @@ fn setup_volume(
                 "-c".to_string(),
                 format!("cat <<EOF > {file_name}\n{content}"),
             ],
+            &ExecConfig {
+                timeout_secs: None,
+                stdin: None,
+            },
         )
         .map_err(AppInitModifyError::VolumeWriteError)
     };
@@ -209,6 +214,7 @@ fn setup_volume(
     write_file(OBELISK_TOML_PATH, obelisk_toml)?;
 
     // Download WASM Components, verify configuration.
+
     activity_fly_http::machines::exec_check_success(
         app_name,
         &temp_vm_id,
@@ -220,38 +226,12 @@ fn setup_volume(
             "--config".to_string(),
             OBELISK_TOML_PATH.to_string(),
         ],
+        &ExecConfig {
+            timeout_secs: Some(30),
+            stdin: None,
+        },
     )
     .map_err(AppInitModifyError::VerifyError)?;
-
-    if let Some(minio_machine_id) = minio_machine_id {
-        write_file(
-            LITESTREAM_CONFIG_PATH,
-            &format!(
-                r#"
-dbs:
-  - path: "{SQLITE_FILE_PATH}"
-    replica:
-      url: "s3://{MINIO_BUCKET_NAME}.{minio_machine_id}.vm.{app_name}.internal:{MINIO_PORT}/litestream/obelisk"
-      access-key-id: "{MINIO_ACCESS_KEY_ID}"
-      secret-access-key: "{MINIO_SECRET_ACCESS_KEY}"
-"#
-            ),
-        )?;
-
-        write_file(
-            LITESTREAM_ENTRYPOINT_PATH,
-            &format!(
-                r#"
-#!/usr/bin/env bash
-
-set -euo pipefail
-
-litestream restore -if-replica-exists --config {LITESTREAM_CONFIG_PATH} {SQLITE_FILE_PATH}
-exec litestream replicate --config {LITESTREAM_CONFIG_PATH} --exec 'obelisk server run --config {OBELISK_TOML_PATH}'
-        "#
-            ),
-        )?;
-    }
 
     // Attempt to shutdown the temp VM.
     // Ignore failure to shut down, temp VM will be deleted with force.
@@ -266,6 +246,32 @@ exec litestream replicate --config {LITESTREAM_CONFIG_PATH} --exec 'obelisk serv
         .map_err(AppInitModifyError::TempVmError)?;
 
     Ok(())
+}
+
+fn litestream_entrypoint_contents() -> String {
+    format!(
+        r#"
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+litestream restore -if-replica-exists --config {LITESTREAM_CONFIG_PATH} {SQLITE_FILE_PATH}
+exec litestream replicate --config {LITESTREAM_CONFIG_PATH} --exec 'obelisk server run --config {OBELISK_TOML_PATH}'
+        "#
+    )
+}
+
+fn litestream_config_contents(app_name: &str, minio_machine_id: &str) -> String {
+    format!(
+        r#"
+dbs:
+  - path: "{SQLITE_FILE_PATH}"
+    replica:
+      url: "s3://{MINIO_BUCKET_NAME}.{minio_machine_id}.vm.{app_name}.internal:{MINIO_PORT}/litestream/obelisk"
+      access-key-id: "{MINIO_ACCESS_KEY_ID}"
+      secret-access-key: "{MINIO_SECRET_ACCESS_KEY}"
+"#
+    )
 }
 
 fn bail_on_app_deletion(app_name: &str) -> Result<(), AppInitModifyError> {
@@ -365,6 +371,10 @@ fn minio_configure(app_name: &str, machine_id: &str) -> Result<(), AppInitModify
                 .split(' ')
                 .map(ToString::to_string)
                 .collect::<Vec<_>>(),
+            &ExecConfig {
+                timeout_secs: None,
+                stdin: None,
+            },
         )
         .map_err(AppInitModifyError::MinioVmError)
     };
@@ -378,11 +388,11 @@ fn minio_configure(app_name: &str, machine_id: &str) -> Result<(), AppInitModify
 fn start_final_vm(
     app_name: &str,
     obelisk_version: &str,
-    litestream: bool,
+    litestream_minio_machine_id: Option<MachineId>,
     vm_startup_deadline_secs: u16,
     expose_api_server: Option<u16>,
 ) -> Result<MachineId, AppInitModifyError> {
-    let entrypoint = if litestream {
+    let entrypoint = if litestream_minio_machine_id.is_some() {
         Some(vec![
             "/usr/bin/env".to_string(),
             "bash".to_string(),
@@ -391,7 +401,7 @@ fn start_final_vm(
     } else {
         None
     };
-    let cmd = if litestream {
+    let cmd = if litestream_minio_machine_id.is_some() {
         None // Same as `Some(vec![])`, $@ will be empty.
     } else {
         Some(
@@ -400,6 +410,29 @@ fn start_final_vm(
                 .map(ToString::to_string)
                 .collect(),
         )
+    };
+    let files = if let Some(minio_machine_id) = litestream_minio_machine_id {
+        Some(vec![
+            FileConfig {
+                guest_path: LITESTREAM_ENTRYPOINT_PATH.to_string(),
+                raw_value: Some(general_purpose::STANDARD.encode(litestream_entrypoint_contents())),
+                mode: None,
+                image_config: None,
+                secret_name: None,
+            },
+            FileConfig {
+                guest_path: LITESTREAM_CONFIG_PATH.to_string(),
+                raw_value: Some(
+                    general_purpose::STANDARD
+                        .encode(litestream_config_contents(app_name, &minio_machine_id)),
+                ),
+                mode: None,
+                image_config: None,
+                secret_name: None,
+            },
+        ])
+    } else {
+        None
     };
     let mut services = vec![
         // Expose health check server as https://[::]:HEALTHCHECK_EXTERNAL_PORT
@@ -463,7 +496,7 @@ fn start_final_vm(
                 path: VOLUME_MOUNT_PATH.to_string(),
             }]),
             services: Some(services),
-            files: None,
+            files,
         },
         Some(REGION),
     )
@@ -621,7 +654,6 @@ impl Guest for Component {
     fn set_up_volume(
         app_name: String,
         config: ObeliskConfig,
-        minio_machine_id: Option<MachineId>,
         temp_vm_startup_deadline_secs: u16,
     ) -> Result<(), AppInitModifyError> {
         let obelisk_toml = serialize_obelisk_toml(&config).unwrap();
@@ -629,7 +661,6 @@ impl Guest for Component {
             &app_name,
             &config.obelisk_version,
             &obelisk_toml,
-            minio_machine_id.as_deref(),
             temp_vm_startup_deadline_secs,
         )
     }
@@ -647,14 +678,14 @@ impl Guest for Component {
     fn start_final_vm(
         app_name: String,
         obelisk_version: String,
-        litestream: bool,
+        litestream_minio_machine_id: Option<MachineId>,
         vm_startup_deadline_secs: u16,
         expose_api_server: Option<u16>,
     ) -> Result<MachineId, AppInitModifyError> {
         start_final_vm(
             &app_name,
             &obelisk_version,
-            litestream,
+            litestream_minio_machine_id,
             vm_startup_deadline_secs,
             expose_api_server,
         )
@@ -688,7 +719,6 @@ impl Guest for Component {
         workflow_import::set_up_volume(
             &app_name,
             &obelisk_config,
-            minio_id.as_deref(),
             init_config.vm_startup_deadline_secs,
         )
         .map_err(|err| cleanup(&app_name, err, init_config.skip_cleanup_on_error))?;
@@ -703,7 +733,7 @@ impl Guest for Component {
         let machine_id = workflow_import::start_final_vm(
             &app_name,
             &obelisk_version,
-            init_config.minio,
+            minio_id.as_deref(),
             init_config.vm_startup_deadline_secs,
             init_config.expose_api_server,
         )

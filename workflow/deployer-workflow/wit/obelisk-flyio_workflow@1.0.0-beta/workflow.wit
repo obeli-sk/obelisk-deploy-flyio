@@ -16,7 +16,6 @@ interface workflow {
     set-up-volume: func(
         app-name: string,
         obelisk-config: obelisk-config,
-        minio-machine-id: option<machine-id>,
         temp-vm-startup-deadline-secs: u16,
         ) -> result<_, app-init-modify-error>;
 
@@ -31,7 +30,7 @@ interface workflow {
     start-final-vm: func(
         app-name: string,
         obelisk-version: string,
-        litestream: bool,
+        litestream-minio-machine-id: option<machine-id>,
         vm-startup-deadline-secs: u16,
         expose-api-server: option<u16>,
         ) -> result<machine-id, app-init-modify-error>;
