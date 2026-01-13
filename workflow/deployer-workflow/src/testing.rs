@@ -82,7 +82,7 @@ fn restart_should_persist_state(
     // Create and start the final VM.
     let _machine_id = imp_workflow::start_final_vm(
         app_name,
-        &obelisk_config.obelisk_version,
+        &obelisk_config,
         Some(&minio_machine_id),
         init_config.vm_startup_deadline_secs,
         init_config.expose_api_server,

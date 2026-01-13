@@ -29,7 +29,7 @@ interface workflow {
     /// Start the final VM.
     start-final-vm: func(
         app-name: string,
-        obelisk-version: string,
+        obelisk-config: obelisk-config,
         litestream-minio-machine-id: option<machine-id>,
         vm-startup-deadline-secs: u16,
         expose-api-server: option<u16>,

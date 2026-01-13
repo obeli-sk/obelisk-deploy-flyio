@@ -68,7 +68,7 @@ const VM_NAME_FINAL: &str = "obelisk";
 const FINAL_VM_MEMORY_MB: u64 = 256;
 const FINAL_VM_SWAP_MB: u64 = 256;
 const VOLUME_MOUNT_PATH: &str = "/volume";
-const OBELISK_TOML_PATH: &str = formatcp!("{VOLUME_MOUNT_PATH}/obelisk.toml");
+const OBELISK_TOML_PATH: &str = "/etc/obelisk/obelisk.toml";
 const OBELISK_BIN_PATH: &str = "/obelisk/obelisk";
 const LITESTREAM_CONFIG_PATH: &str = "/etc/litestream.yml";
 const SQLITE_DIRECTORY_PATH: &str = formatcp!("{VOLUME_MOUNT_PATH}/obelisk-sqlite");
@@ -180,7 +180,13 @@ fn setup_volume(
                 path: VOLUME_MOUNT_PATH.to_string(),
             }]),
             services: None,
-            files: None,
+            files: Some(vec![FileConfig {
+                guest_path: OBELISK_TOML_PATH.to_string(),
+                raw_value: Some(general_purpose::STANDARD.encode(obelisk_toml)),
+                image_config: None,
+                mode: None,
+                secret_name: None,
+            }]),
         },
         Some(REGION),
     )
@@ -192,29 +198,7 @@ fn setup_volume(
         AppInitModifyError::TempVmError,
         temp_vm_startup_deadline_secs,
     )?;
-
-    let write_file = |file_name: &str, content: &str| {
-        activity_fly_http::machines::exec_check_success(
-            app_name,
-            &temp_vm_id,
-            &[
-                "sh".to_string(),
-                "-c".to_string(),
-                format!("cat <<EOF > {file_name}\n{content}"),
-            ],
-            &ExecConfig {
-                timeout_secs: None,
-                stdin: None,
-            },
-        )
-        .map_err(AppInitModifyError::VolumeWriteError)
-    };
-
-    // Write obelisk.toml
-    write_file(OBELISK_TOML_PATH, obelisk_toml)?;
-
     // Download WASM Components, verify configuration.
-
     activity_fly_http::machines::exec_check_success(
         app_name,
         &temp_vm_id,
@@ -387,11 +371,12 @@ fn minio_configure(app_name: &str, machine_id: &str) -> Result<(), AppInitModify
 
 fn start_final_vm(
     app_name: &str,
-    obelisk_version: &str,
+    obelisk_config: ObeliskConfig,
     litestream_minio_machine_id: Option<MachineId>,
     vm_startup_deadline_secs: u16,
     expose_api_server: Option<u16>,
 ) -> Result<MachineId, AppInitModifyError> {
+    let obelisk_toml = serialize_obelisk_toml(&obelisk_config).unwrap();
     let entrypoint = if litestream_minio_machine_id.is_some() {
         Some(vec![
             "/usr/bin/env".to_string(),
@@ -411,29 +396,32 @@ fn start_final_vm(
                 .collect(),
         )
     };
-    let files = if let Some(minio_machine_id) = litestream_minio_machine_id {
-        Some(vec![
-            FileConfig {
-                guest_path: LITESTREAM_ENTRYPOINT_PATH.to_string(),
-                raw_value: Some(general_purpose::STANDARD.encode(litestream_entrypoint_contents())),
-                mode: None,
-                image_config: None,
-                secret_name: None,
-            },
-            FileConfig {
-                guest_path: LITESTREAM_CONFIG_PATH.to_string(),
-                raw_value: Some(
-                    general_purpose::STANDARD
-                        .encode(litestream_config_contents(app_name, &minio_machine_id)),
-                ),
-                mode: None,
-                image_config: None,
-                secret_name: None,
-            },
-        ])
-    } else {
-        None
-    };
+    let mut files = vec![FileConfig {
+        guest_path: OBELISK_TOML_PATH.to_string(),
+        raw_value: Some(general_purpose::STANDARD.encode(obelisk_toml)),
+        image_config: None,
+        mode: None,
+        secret_name: None,
+    }];
+    if let Some(minio_machine_id) = litestream_minio_machine_id {
+        files.push(FileConfig {
+            guest_path: LITESTREAM_ENTRYPOINT_PATH.to_string(),
+            raw_value: Some(general_purpose::STANDARD.encode(litestream_entrypoint_contents())),
+            mode: None,
+            image_config: None,
+            secret_name: None,
+        });
+        files.push(FileConfig {
+            guest_path: LITESTREAM_CONFIG_PATH.to_string(),
+            raw_value: Some(
+                general_purpose::STANDARD
+                    .encode(litestream_config_contents(app_name, &minio_machine_id)),
+            ),
+            mode: None,
+            image_config: None,
+            secret_name: None,
+        });
+    }
     let mut services = vec![
         // Expose health check server as https://[::]:HEALTHCHECK_EXTERNAL_PORT
         ServiceConfig {
@@ -469,7 +457,7 @@ fn start_final_vm(
         app_name,
         VM_NAME_FINAL,
         &MachineConfig {
-            image: obelisk_image(obelisk_version),
+            image: obelisk_image(&obelisk_config.obelisk_version),
             guest: Some(GuestConfig {
                 cpu_kind: Some(CpuKind::Shared),
                 cpus: Some(1),
@@ -496,7 +484,7 @@ fn start_final_vm(
                 path: VOLUME_MOUNT_PATH.to_string(),
             }]),
             services: Some(services),
-            files,
+            files: Some(files),
         },
         Some(REGION),
     )
@@ -677,14 +665,14 @@ impl Guest for Component {
 
     fn start_final_vm(
         app_name: String,
-        obelisk_version: String,
+        obelisk_config: ObeliskConfig,
         litestream_minio_machine_id: Option<MachineId>,
         vm_startup_deadline_secs: u16,
         expose_api_server: Option<u16>,
     ) -> Result<MachineId, AppInitModifyError> {
         start_final_vm(
             &app_name,
-            &obelisk_version,
+            obelisk_config,
             litestream_minio_machine_id,
             vm_startup_deadline_secs,
             expose_api_server,
@@ -707,7 +695,7 @@ impl Guest for Component {
     ) -> Result<MachineId, AppInitError> {
         // Launch sub-workflows by using import.
         // In case of any error including a trap (panic), delete the whole app.
-        let obelisk_version = obelisk_config.obelisk_version.clone();
+
         let minio_id = workflow_import::prepare(
             &org_slug,
             &app_name,
@@ -732,7 +720,7 @@ impl Guest for Component {
 
         let machine_id = workflow_import::start_final_vm(
             &app_name,
-            &obelisk_version,
+            &obelisk_config,
             minio_id.as_deref(),
             init_config.vm_startup_deadline_secs,
             init_config.expose_api_server,
