@@ -223,6 +223,11 @@ interface machines {
     host-status: host-status,
   }
 
+  record exec-config {
+    timeout-secs: option<u16>,
+    stdin: option<string>,
+  }
+
   %list: func(app-name: string) -> result<list<machine>, string>;
 
   get: func(app-name: string, machine-id: machine-id) -> result<option<machine>, string>;
@@ -241,9 +246,9 @@ interface machines {
 
   delete: func(app-name: string, machine-id: machine-id, force: bool) -> result<_, string>;
 
-  exec: func(app-name: string, machine-id: machine-id, command: list<string>) -> result<exec-response, string>;
+  exec: func(app-name: string, machine-id: machine-id, command: list<string>, config: exec-config) -> result<exec-response, string>;
 
-  exec-check-success: func(app-name: string, machine-id: machine-id, command: list<string>) -> result<exec-response, string>;
+  exec-check-success: func(app-name: string, machine-id: machine-id, command: list<string>, config: exec-config) -> result<exec-response, string>;
 }
 interface secrets {
   record secret {
