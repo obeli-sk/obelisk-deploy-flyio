@@ -11,7 +11,7 @@ test:
 test-integration:
 	(cd activity/obelisk-client && TEST_ENDPOINT_URL=http://localhost:5005 cargo nextest run -- --ignored)
 
-verify params="":
+verify *params:
 	obelisk server verify --config obelisk-local.toml {{params}}
 	obelisk server verify --config obelisk-local-postgres.toml {{params}}
 	obelisk server verify --config obelisk-oci.toml {{params}}
@@ -22,8 +22,8 @@ serve:
 serve-oci:
 	obelisk server run --config ${CONFIG:-obelisk-oci.toml}
 
-app-init params:
-	obelisk client execution submit -f .../workflow.app-init '{{params}}'
+app-init *params:
+	obelisk client execution submit -f .../workflow.app-init {{params}}
 
-start-restart-should-persist-state params:
-	obelisk client execution submit -f .../testing.start-restart-should-persist-state '{{params}}'
+start-restart-should-persist-state *params:
+	obelisk client execution submit -f .../testing.start-restart-should-persist-state {{params}}
