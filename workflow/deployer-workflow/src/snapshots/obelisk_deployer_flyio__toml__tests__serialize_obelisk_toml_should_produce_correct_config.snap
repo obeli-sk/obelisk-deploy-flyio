@@ -75,19 +75,15 @@ directory = "/volume/codegen"
 
 [[webhook_endpoint]]
 http_server = "healthcheck_server"
+location = "oci://docker.io/getobelisk/components_flyio_webhook_healthcheck:2026-01-13@sha256:c5cdf4eeef0863a4bb66b067b525111c84be1772ff849872d026fe4c5cbaa408"
 name = "webhook_healthcheck"
 routes = [""]
-
-[webhook_endpoint.location]
-oci = "docker.io/getobelisk/components_flyio_webhook_healthcheck:2026-01-13@sha256:c5cdf4eeef0863a4bb66b067b525111c84be1772ff849872d026fe4c5cbaa408"
 
 [[webhook_endpoint]]
 env_vars = ["GITHUB_WEBHOOK_SECRET"]
 http_server = "webhook_server"
+location = "oci://docker.io/getobelisk/demo_stargazers_webhook:2025-09-28@sha256:aa4dfa18d1ad7c1623163eeabb41a415ebad5296fca8f3b957987afcdb2a0f40"
 name = "stargazers_webhook"
-
-[webhook_endpoint.location]
-oci = "docker.io/getobelisk/demo_stargazers_webhook:2025-09-28@sha256:aa4dfa18d1ad7c1623163eeabb41a415ebad5296fca8f3b957987afcdb2a0f40"
 
 [[webhook_endpoint.routes]]
 methods = [
@@ -100,7 +96,5 @@ route = ""
 listening_addr = "[::]:8080"
 
 [[workflow]]
+location = "oci://docker.io/getobelisk/demo_stargazers_workflow:2025-09-28@sha256:678d85e3e2f89d22794fd1ffc0217bf23510e1349ee150a54d5c82cc2ef75834"
 name = "stargazers_workflow"
-
-[workflow.location]
-oci = "docker.io/getobelisk/demo_stargazers_workflow:2025-09-28@sha256:678d85e3e2f89d22794fd1ffc0217bf23510e1349ee150a54d5c82cc2ef75834"

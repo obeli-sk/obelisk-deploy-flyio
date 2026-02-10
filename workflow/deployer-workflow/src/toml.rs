@@ -11,7 +11,7 @@ pub(crate) fn serialize_obelisk_toml(config: &ObeliskConfig) -> Result<String, a
     const WEBHOOK_SERVER_NAME: &str = "webhook_server";
     const OBELISK_OCI_TOML: &str = include_str!("../../../obelisk-oci.toml");
 
-    let webhook_healthcheck_oci = {
+    let webhook_healthcheck_location = {
         let val: toml::Value = toml::from_str(OBELISK_OCI_TOML).expect("Invalid TOML");
 
         let endpoint = val["webhook_endpoint"]
@@ -22,9 +22,9 @@ pub(crate) fn serialize_obelisk_toml(config: &ObeliskConfig) -> Result<String, a
             })
             .expect("endpoint not found");
 
-        endpoint["location"]["oci"]
+        endpoint["location"]
             .as_str()
-            .expect("missing location.oci")
+            .expect("missing location")
             .to_string()
     };
 
@@ -59,7 +59,7 @@ listening_addr = "0.0.0.0:{HEALTHCHECK_INTERNAL_PORT}"
 
 [[webhook_endpoint]]
 name = "webhook_healthcheck"
-location.oci = "{webhook_healthcheck_oci}"
+location = "{webhook_healthcheck_location}"
 http_server = "{HEALTHCHECK_SERVER_NAME}"
 routes = [""]
 
@@ -145,13 +145,10 @@ listening_addr = "0.0.0.0:{WEBHOOK_INTERNAL_PORT}"
                 "name".to_string(),
                 toml::Value::String(workflow.name.clone()),
             );
-
-            let mut location_table = Table::new();
-            location_table.insert(
-                "oci".to_string(),
-                toml::Value::String(workflow.location_oci.clone()),
+            workflow_table.insert(
+                "location".to_string(),
+                toml::Value::String(format!("oci://{}", workflow.location_oci)),
             );
-            workflow_table.insert("location".to_string(), toml::Value::Table(location_table));
 
             workflow_array.push(toml::Value::Table(workflow_table));
         }
@@ -167,12 +164,10 @@ listening_addr = "0.0.0.0:{WEBHOOK_INTERNAL_PORT}"
                 toml::Value::String(webhook.name.clone()),
             );
 
-            let mut location_table = Table::new();
-            location_table.insert(
-                "oci".to_string(),
-                toml::Value::String(webhook.location_oci.clone()),
+            webhook_table.insert(
+                "location".to_string(),
+                toml::Value::String(format!("oci://{}", webhook.location_oci)),
             );
-            webhook_table.insert("location".to_string(), toml::Value::Table(location_table));
 
             webhook_table.insert(
                 "http_server".to_string(),
