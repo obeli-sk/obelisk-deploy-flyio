@@ -19,6 +19,13 @@ jobs:
         with:
           fetch-depth: 1
 
+      - name: Sync flake.lock and rust-toolchain.toml from upstream
+        run: |
+          curl https://raw.githubusercontent.com/obeli-sk/obelisk/refs/heads/latest/flake.lock -o flake.lock
+          UPSTREAM=https://raw.githubusercontent.com/obeli-sk/obelisk/refs/heads/latest/rust-toolchain.toml
+          CHANNEL=$(curl -fsSL "$UPSTREAM" | grep '^channel =')
+          sed -i "s/^channel =.*/$CHANNEL/" rust-toolchain.toml
+
       - uses: nixbuild/nix-quick-install-action@v34
         with:
           github_access_token: ${{ secrets.GITHUB_TOKEN }}
@@ -29,14 +36,14 @@ jobs:
         run: |
           nix develop --command echo
 
-      - name: Sync flake.lock and rust-toolchain.toml from upstream
-        run: |
-          curl https://raw.githubusercontent.com/obeli-sk/obelisk/refs/heads/latest/flake.lock -o flake.lock
-          curl https://raw.githubusercontent.com/obeli-sk/obelisk/refs/heads/latest/rust-toolchain.toml -o rust-toolchain.toml
-
       - name: Update dev-deps.txt
         run: |
           nix develop . --command ./scripts/dev-deps.sh
+
+      - name: Generate wit support and extensions 
+        run: |
+          nix develop . --command ./scripts/obelisk-generate-wit-support.sh
+          nix develop . --command ./scripts/obelisk-generate-wit-extensions.sh
 
       - name: Generate Unique Branch Name
         id: branch-name
@@ -72,3 +79,4 @@ jobs:
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN_PR_RW }}
+
