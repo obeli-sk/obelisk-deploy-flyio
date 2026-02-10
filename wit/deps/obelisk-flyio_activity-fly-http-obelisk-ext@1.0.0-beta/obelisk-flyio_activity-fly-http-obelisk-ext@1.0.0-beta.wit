@@ -2,9 +2,9 @@ package obelisk-flyio:activity-fly-http-obelisk-ext@1.0.0-beta;
 
 interface apps {
   use obelisk-flyio:activity-fly-http/apps@1.0.0-beta.{app};
-  use obelisk:types/execution@4.0.0.{execution-id};
-  use obelisk:types/join-set@4.0.0.{join-set};
-  use obelisk:types/execution@4.0.0.{await-next-extension-error, get-extension-error};
+  use obelisk:types/execution@4.1.0.{execution-id};
+  use obelisk:types/join-set@4.1.0.{join-set};
+  use obelisk:types/execution@4.1.0.{await-next-extension-error, get-extension-error};
 
   get-submit: func(join-set: borrow<join-set>, app-name: string) -> execution-id;
 
@@ -33,9 +33,9 @@ interface apps {
 interface volumes {
   use obelisk-flyio:activity-fly-http/regions@1.0.0-beta.{region};
   use obelisk-flyio:activity-fly-http/volumes@1.0.0-beta.{volume, volume-create-request};
-  use obelisk:types/execution@4.0.0.{execution-id};
-  use obelisk:types/join-set@4.0.0.{join-set};
-  use obelisk:types/execution@4.0.0.{await-next-extension-error, get-extension-error};
+  use obelisk:types/execution@4.1.0.{execution-id};
+  use obelisk:types/join-set@4.1.0.{join-set};
+  use obelisk:types/execution@4.1.0.{await-next-extension-error, get-extension-error};
 
   type volume-id = string;
 
@@ -73,9 +73,9 @@ interface machines {
   use obelisk-flyio:activity-fly-http/regions@1.0.0-beta.{region};
   use obelisk-flyio:activity-fly-http/volumes@1.0.0-beta.{volume-id};
   use obelisk-flyio:activity-fly-http/machines@1.0.0-beta.{machine-state, host-status, file-config, mount, cpu-kind, guest-config, restart-policy, machine-restart, init-config, stop-config, exec-response, service-protocol, port-handler, port-config, service-config, machine-config, machine, exec-config};
-  use obelisk:types/execution@4.0.0.{execution-id};
-  use obelisk:types/join-set@4.0.0.{join-set};
-  use obelisk:types/execution@4.0.0.{await-next-extension-error, get-extension-error};
+  use obelisk:types/execution@4.1.0.{execution-id};
+  use obelisk:types/join-set@4.1.0.{join-set};
+  use obelisk:types/execution@4.1.0.{await-next-extension-error, get-extension-error};
 
   type machine-id = string;
 
@@ -147,9 +147,9 @@ interface machines {
 }
 interface secrets {
   use obelisk-flyio:activity-fly-http/secrets@1.0.0-beta.{secret};
-  use obelisk:types/execution@4.0.0.{execution-id};
-  use obelisk:types/join-set@4.0.0.{join-set};
-  use obelisk:types/execution@4.0.0.{await-next-extension-error, get-extension-error};
+  use obelisk:types/execution@4.1.0.{execution-id};
+  use obelisk:types/join-set@4.1.0.{join-set};
+  use obelisk:types/execution@4.1.0.{await-next-extension-error, get-extension-error};
 
   list-submit: func(join-set: borrow<join-set>, app-name: string) -> execution-id;
 
@@ -166,9 +166,9 @@ interface secrets {
 interface ips {
   use obelisk-flyio:activity-fly-http/regions@1.0.0-beta.{region};
   use obelisk-flyio:activity-fly-http/ips@1.0.0-beta.{ipv4-config, ipv6-config, ip-variant, ip-detail};
-  use obelisk:types/execution@4.0.0.{execution-id};
-  use obelisk:types/join-set@4.0.0.{join-set};
-  use obelisk:types/execution@4.0.0.{await-next-extension-error, get-extension-error};
+  use obelisk:types/execution@4.1.0.{execution-id};
+  use obelisk:types/join-set@4.1.0.{join-set};
+  use obelisk:types/execution@4.1.0.{await-next-extension-error, get-extension-error};
 
   type ip-address = string;
 
