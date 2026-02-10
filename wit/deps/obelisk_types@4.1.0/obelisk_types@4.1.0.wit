@@ -1,4 +1,4 @@
-package obelisk:types@4.0.0;
+package obelisk:types@4.1.0;
 
 @since(version = 3.0.0)
 interface time {
@@ -28,6 +28,8 @@ interface time {
 }
 @since(version = 4.0.0)
 interface execution {
+  use time.{duration};
+
   @since(version = 3.0.0)
   record execution-id {
     id: string,
@@ -42,6 +44,7 @@ interface execution {
   record function {
     /// `namespace:pkg_name/ifc_name` or `namespace:pkg_name/ifc_name@version`
     interface-name: string,
+    /// must not contain dot (`.`)
     function-name: string,
   }
 
@@ -77,8 +80,7 @@ interface execution {
     /// This can happen when join set contains responses of multiple functions.
     function-mismatch(function-mismatch),
     /// Processed responses do not contain the specified execution ID.
-    /// This can happen if the execution was not marked as processed (awaited), or
-    /// the execution ID does not belong to the specified join set.
+    /// Execution was not awaited using `-await-next` extension or `join-set.join-next`.
     not-found-in-processed-responses,
   }
 
@@ -94,6 +96,13 @@ interface execution {
     /// Conflict can happen when a second writer attempts to stub a value, while the
     /// value is not equal to the already stubbed value.
     conflict,
+  }
+
+  @since(version = 4.1.0)
+  record submit-config {
+    /// Override max duration of a execution run (single attempt).
+    /// Applies to activities only as workflows automatically extend their locks using `lock_extension` setting.
+    timeout: option<duration>,
   }
 }
 @since(version = 4.0.0)
@@ -111,19 +120,24 @@ interface join-set {
     @since(version = 4.0.0)
     id: func() -> string;
     /// Submit a delay request to the join set. The delay can be later polled using `join-next`.
+    /// This function has been moved to `workflow-support`.
     @since(version = 4.0.0)
+    @deprecated(version = 4.1.0)
     submit-delay: func(timeout: schedule-at) -> delay-id;
     /// Block the workflow execution until next response associated with the join set arrives.
     /// The response is marked as processed.
     /// Child execution result can be obtained using `-get` extension function using the
     /// returned execution ID.
     /// Return `join-next-error::all-processed` if the join set has all requests matched with responses.
+    /// This function has been moved to `workflow-support`.
     @since(version = 4.0.0)
+    @deprecated(version = 4.1.0)
     join-next: func() -> result<tuple<response-id, result>, join-next-error>;
   }
 
   /// Error variants that may occur when calling `join-next` function.
   @since(version = 4.0.0)
+  @deprecated(version = 4.1.0)
   variant join-next-error {
     /// All submitted requests and their responses were already processed.
     all-processed,
