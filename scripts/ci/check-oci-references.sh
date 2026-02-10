@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+# Checks that OCI references from `obelisk-external.toml` match the remaining TOML files.
+
 set -exuo pipefail
 cd "$(dirname "$0")/../.."
 
@@ -19,13 +21,13 @@ fi
 echo "Reading references from $SOURCE_FILE..."
 
 # Extract OCI values using grep and awk
-# 1. grep 'location.oci': gets the relevant lines
+# 1. grep 'location': gets the relevant lines
 # 2. awk -F'"': splits by quote and prints the 2nd column (the content inside quotes)
-REFERENCES=$(grep 'location.oci' "$SOURCE_FILE" | awk -F'"' '{print $2}')
+REFERENCES=$(grep 'location' "$SOURCE_FILE" | awk -F'"' '{print $2}')
 
 # Check if we found any references
 if [ -z "$REFERENCES" ]; then
-    echo "No 'location.oci' entries found in source file."
+    echo "No 'location' entries found in source file."
     exit 0
 fi
 
