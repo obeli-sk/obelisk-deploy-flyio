@@ -43,10 +43,6 @@ webui.listening_addr = "[::]:8080"
 directory = "{SQLITE_DIRECTORY_PATH}"
 pragma = {{ "cache_size" = "3000" }}
 
-[log.stdout]
-enabled = true
-level = "WARN,obelisk=info"
-
 [log.file]
 enabled = true
 target = true
@@ -95,12 +91,10 @@ listening_addr = "0.0.0.0:{WEBHOOK_INTERNAL_PORT}"
                 toml::Value::String(activity.name.clone()),
             );
 
-            let mut location_table = Table::new();
-            location_table.insert(
-                "oci".to_string(),
+            activity_table.insert(
+                "location".to_string(),
                 toml::Value::String(activity.location_oci.clone()),
             );
-            activity_table.insert("location".to_string(), toml::Value::Table(location_table));
 
             if let Some(env_vars) = &activity.env_vars {
                 activity_table.insert(
@@ -147,7 +141,7 @@ listening_addr = "0.0.0.0:{WEBHOOK_INTERNAL_PORT}"
             );
             workflow_table.insert(
                 "location".to_string(),
-                toml::Value::String(format!("oci://{}", workflow.location_oci)),
+                toml::Value::String(workflow.location_oci.clone()),
             );
 
             workflow_array.push(toml::Value::Table(workflow_table));
@@ -166,7 +160,7 @@ listening_addr = "0.0.0.0:{WEBHOOK_INTERNAL_PORT}"
 
             webhook_table.insert(
                 "location".to_string(),
-                toml::Value::String(format!("oci://{}", webhook.location_oci)),
+                toml::Value::String(webhook.location_oci.clone()),
             );
 
             webhook_table.insert(
@@ -234,21 +228,21 @@ mod tests {
             activity_wasm_list: Some(vec![
                 ActivityWasm {
                     name: "stargazers_activity_llm_chatgpt".to_string(),
-                    location_oci: "docker.io/getobelisk/demo_stargazers_activity_llm_openai:2025-09-28@sha256:4b10a66c80bec625a6b0a2e8a4b5192f8a2356eca19c0a6705335771a8b8b1e8".to_string(),
+                    location_oci: "oci://docker.io/getobelisk/demo_stargazers_activity_llm_openai:2025-09-28@sha256:4b10a66c80bec625a6b0a2e8a4b5192f8a2356eca19c0a6705335771a8b8b1e8".to_string(),
                     env_vars: Some(vec!["OPENAI_API_KEY".to_string()]),
                     lock_expiry_seconds: Some(10),
                     max_retries: None,
                 },
                 ActivityWasm {
                     name: "stargazers_activity_github_impl".to_string(),
-                    location_oci: "docker.io/getobelisk/demo_stargazers_activity_github_impl:2025-09-28@sha256:8f6fc9b1379b359e085998fa2fd7c966c450327d09770807dfba4b2f75731d72".to_string(),
+                    location_oci: "oci://docker.io/getobelisk/demo_stargazers_activity_github_impl:2025-09-28@sha256:8f6fc9b1379b359e085998fa2fd7c966c450327d09770807dfba4b2f75731d72".to_string(),
                     env_vars: Some(vec!["GITHUB_TOKEN".to_string()]),
                     lock_expiry_seconds: Some(5),
                     max_retries: None,
                 },
                 ActivityWasm {
                     name: "stargazers_activity_db_turso".to_string(),
-                    location_oci: "docker.io/getobelisk/demo_stargazers_activity_db_turso:2025-09-28@sha256:26b08b3d0c6e430944d8187a00bd9817a83ab89e11ba72d15e7533a758addf33".to_string(),
+                    location_oci: "oci://docker.io/getobelisk/demo_stargazers_activity_db_turso:2025-09-28@sha256:26b08b3d0c6e430944d8187a00bd9817a83ab89e11ba72d15e7533a758addf33".to_string(),
                     env_vars: Some(vec!["TURSO_TOKEN".to_string(), "TURSO_LOCATION".to_string()]),
                     lock_expiry_seconds: Some(5),
                     max_retries: Some(9),
@@ -257,13 +251,13 @@ mod tests {
             workflow_list: Some(vec![
                 Workflow {
                     name: "stargazers_workflow".to_string(),
-                    location_oci: "docker.io/getobelisk/demo_stargazers_workflow:2025-09-28@sha256:678d85e3e2f89d22794fd1ffc0217bf23510e1349ee150a54d5c82cc2ef75834".to_string(),
+                    location_oci: "oci://docker.io/getobelisk/demo_stargazers_workflow:2025-09-28@sha256:678d85e3e2f89d22794fd1ffc0217bf23510e1349ee150a54d5c82cc2ef75834".to_string(),
                 },
             ]),
             webhook_endpoint_list: Some(vec![
                 WebhookEndpoint {
                     name: "stargazers_webhook".to_string(),
-                    location_oci: "docker.io/getobelisk/demo_stargazers_webhook:2025-09-28@sha256:aa4dfa18d1ad7c1623163eeabb41a415ebad5296fca8f3b957987afcdb2a0f40".to_string(),
+                    location_oci: "oci://docker.io/getobelisk/demo_stargazers_webhook:2025-09-28@sha256:aa4dfa18d1ad7c1623163eeabb41a415ebad5296fca8f3b957987afcdb2a0f40".to_string(),
                     routes: vec![
                         Route {
                             methods: vec!["POST".to_string(), "GET".to_string()],

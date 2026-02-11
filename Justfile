@@ -9,7 +9,7 @@ test:
 	cargo nextest run --workspace
 
 test-integration:
-	(cd activity/obelisk-client && TEST_ENDPOINT_URL=http://localhost:5005 cargo nextest run -- --ignored)
+	(cd activity/obelisk-&& TEST_ENDPOINT_URL=http://localhost:5005 cargo nextest run -- --ignored)
 
 verify *params:
 	obelisk server verify --config obelisk-local.toml {{params}}
@@ -22,8 +22,8 @@ serve:
 serve-oci:
 	obelisk server run --config ${CONFIG:-obelisk-oci.toml}
 
-app-init *params:
-	obelisk client execution submit -f .../workflow.app-init {{params}}
+app-init params:
+	obelisk execution submit -f .../workflow.app-init '{{params}}'
 
 start-restart-should-persist-state *params:
-	obelisk client execution submit -f .../testing.start-restart-should-persist-state {{params}}
+	obelisk execution submit -f .../testing.start-restart-should-persist-state {{params}}

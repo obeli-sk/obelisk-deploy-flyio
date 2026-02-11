@@ -22,39 +22,39 @@ cat <<EOF
 "$FLY_ORG_SLUG",
 "$FLY_APP_NAME",
 {
-    "obelisk-version": "$OBELISK_VERSION",
-    "activity-wasm-list":[
+    "obelisk_version": "$OBELISK_VERSION",
+    "activity_wasm_list":[
         {
             "name": "activity_fly_http",
-            "location-oci": "$ACTIVITY_FLY_OCI",
-            "env-vars":["FLY_API_TOKEN"],
-            "lock-expiry-seconds": 15,
-            "max-retries": 6
+            "location_oci": "$ACTIVITY_FLY_OCI",
+            "env_vars":["FLY_API_TOKEN"],
+            "lock_expiry_seconds": 15,
+            "max_retries": 6
         },
         {
             "name": "activity_http_generic",
-            "location-oci": "$ACTIVITY_HTTP_OCI",
-            "lock-expiry-seconds": 5
+            "location_oci": "$ACTIVITY_HTTP_OCI",
+            "lock_expiry_seconds": 5
         },
         {
             "name": "activity_obelisk_client",
-            "location-oci": "$ACTIVITY_OBELISK_CLIENT_OCI"
+            "location_oci": "$ACTIVITY_OBELISK_CLIENT_OCI"
         }
     ],
-    "workflow-list":[
+    "workflow_list":[
         {
             "name": "obelisk_deployer_flyio",
-            "location-oci": "$WORKFLOW_OCI"
+            "location_oci": "$WORKFLOW_OCI"
         }
     ]
 },
 {
-    "secrets-deadline-secs": $SECRETS_DEADLINE_SECS,
-    "health-check-deadline-secs": $HEALTH_CHECK_DEADLINE_SECS,
-    "skip-cleanup-on-error": $SKIP_CLEANUP,
+    "secrets_deadline_secs": $SECRETS_DEADLINE_SECS,
+    "health_check_deadline_secs": $HEALTH_CHECK_DEADLINE_SECS,
+    "skip_cleanup_on_error": $SKIP_CLEANUP,
     "minio": $MINIO,
-    "vm-startup-deadline-secs": $VM_STARTUP_DEADLINE_SECS,
-    "expose-api-server": null
+    "vm_startup_deadline_secs": $VM_STARTUP_DEADLINE_SECS,
+    "expose_api_server": null
 }
 ]
 EOF

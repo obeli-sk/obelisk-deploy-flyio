@@ -101,7 +101,7 @@ flyctl proxy 5005 $(fly machine list | grep obelisk | awk '{print $6}')
 
 Verify the port tunneling works:
 ```sh
-obelisk client component list
+obelisk component list
 ```
 
 Now run `app-init` with a new fly app name:
