@@ -65,7 +65,7 @@ directory = "/volume/codegen"
 
 [[webhook_endpoint]]
 http_server = "healthcheck_server"
-location = "oci://docker.io/getobelisk/components_flyio_webhook_healthcheck:2026-01-13@sha256:c5cdf4eeef0863a4bb66b067b525111c84be1772ff849872d026fe4c5cbaa408"
+location = "oci://docker.io/getobelisk/components_flyio_webhook_healthcheck:2026-02-12@sha256:a86461ea58e59f375b938b63441605fa2f5eb00bfbe71ef97c47aee657294dc3"
 name = "webhook_healthcheck"
 routes = [""]
 
