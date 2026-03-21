@@ -318,7 +318,7 @@ dependencies = [
  "serde_json",
  "toml",
  "wit-bindgen 0.53.1",
- "wit-bindgen-rust 0.53.1",
+ "wit-bindgen-rust 0.54.0",
  "wit-parser 0.245.1",
 ]
 
@@ -767,6 +767,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "wit-bindgen-core"
+version = "0.54.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "99cdef5ccf0b0e9bf30868d6f9c5ed116c84ae95f84ba29d2216d3e922de3963"
+dependencies = [
+ "anyhow",
+ "heck",
+ "wit-parser 0.245.1",
+]
+
+[[package]]
 name = "wit-bindgen-rust"
 version = "0.51.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -795,6 +806,22 @@ dependencies = [
  "syn",
  "wasm-metadata 0.245.1",
  "wit-bindgen-core 0.53.1",
+ "wit-component 0.245.1",
+]
+
+[[package]]
+name = "wit-bindgen-rust"
+version = "0.54.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e76541e2f37ac1729db85765729daa0f3c2b5975d66699114d107525f6d6c8d5"
+dependencies = [
+ "anyhow",
+ "heck",
+ "indexmap",
+ "prettyplease",
+ "syn",
+ "wasm-metadata 0.245.1",
+ "wit-bindgen-core 0.54.0",
  "wit-component 0.245.1",
 ]
 
