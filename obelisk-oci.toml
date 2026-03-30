@@ -1,47 +1,37 @@
-api.listening_addr = "127.0.0.1:5005"
-webui.listening_addr = "127.0.0.1:8080"
-
-
-[log.file]
-enabled = true
-target = true
-level="info"
-directory = "."
-prefix = "obelisk.log" # File name prefix
-
 [[activity_wasm]]
 name = "activity_fly_http"
-location = "oci://docker.io/getobelisk/components_fly_activity_fly_http:2026-01-13-1@sha256:7b39b252793821b0b7a1cfb4c330fa41c869a8895cfd0ee69c9a9b7e2d3d1b9d"
-exec.lock_expiry.seconds = 30
-env_vars = ["FLY_API_TOKEN"]
+location = "oci://docker.io/getobelisk/components_fly_activity_fly_http:2026-03-30@sha256:fef07531120e10a8e59edbb4927dcfffae68aed6925d76ea43c8e02e30584161"
+exec.lock_expiry.seconds = 15
 max_retries = 6
+[[activity_wasm.allowed_host]]
+pattern = "https://api.machines.dev"
+methods = ["POST"]
+[activity_wasm.allowed_host.secrets]
+env_vars = ["FLY_API_TOKEN"]
+replace_in = ["headers"]
 
 # HTTP Client for health checking.
 [[activity_wasm]]
 name = "activity_http_generic"
-location = "oci://docker.io/getobelisk/components_http_activity_http_generic:2026-01-13@sha256:f64b64aa176224645a21d583312ad1e832afae57af138998711771c4411e3b3e"
+location = "oci://docker.io/getobelisk/components_http_activity_http_generic:2026-03-30@sha256:d170092f3023380960c459bb92d71b6a0ac8c8d3f16ccb863eed72e69cf7157d"
 exec.lock_expiry.seconds = 5
+[[activity_wasm.allowed_host]]
+pattern = "https://*.fly.dev"
+methods = "*"
 
 [[activity_wasm]]
 name = "activity_obelisk_client"
-location = "oci://docker.io/getobelisk/components_obelisk_activity_obelisk_client_http:2026-01-10@sha256:ca99fa1f0b08d1883784baff2966e07abe36b450b63d8deac25f8abf8cecd0ce"
+location = "oci://docker.io/getobelisk/components_obelisk_activity_obelisk_client_http:2026-03-30@sha256:f5fa282bb6941b3520c9ac98a949f0c1438eb3f728369858165bba4a91a8dd4c"
+[[activity_wasm.allowed_host]]
+pattern = "https://*.fly.dev"
+methods = ["GET", "POST"]
 
-[[workflow]]
+[[workflow_wasm]]
 name = "obelisk_deployer_flyio"
-location = "oci://docker.io/getobelisk/components_flyio_obelisk_deployer_flyio:2026-02-12@sha256:6376d4491f1033f4170bf01fd3cf07e4d3444a5ba780050a3656afed8312f310"
-backtrace.sources = {
-    ".../src/lib.rs" = "${OBELISK_TOML_DIR}/workflow/deployer-workflow/src/lib.rs",
-    ".../src/testing.rs" = "${OBELISK_TOML_DIR}/workflow/deployer-workflow/src/testing.rs",
-    ".../src/toml.rs" = "${OBELISK_TOML_DIR}/workflow/deployer-workflow/src/toml.rs",
-}
+location = "oci://docker.io/getobelisk/components_flyio_obelisk_deployer_flyio:2026-03-30@sha256:07b5f2492a3f41a36fbe74cda801a7a0c291a986f99d0c1d0866c43bf89d7aa2"
 
 # This webhook is here only for `push-components.sh`
-[[webhook_endpoint]]
+[[webhook_endpoint_wasm]]
 name = "webhook_healthcheck"
-location = "oci://docker.io/getobelisk/components_flyio_webhook_healthcheck:2026-02-12@sha256:a86461ea58e59f375b938b63441605fa2f5eb00bfbe71ef97c47aee657294dc3"
-http_server = "webhook_server"
+location = "oci://docker.io/getobelisk/components_flyio_webhook_healthcheck:2026-03-30@sha256:a81199c7df4d282725ed57f0d20f4214a64dc04aa8320911cda1748dcfde68f8"
 routes = ["/obeliskhealthcheck"]
-
-[[http_server]]
-name = "webhook_server"
-listening_addr = "0.0.0.0:9090"

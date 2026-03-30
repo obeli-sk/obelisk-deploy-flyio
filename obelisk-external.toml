@@ -1,12 +1,12 @@
 [[activity_wasm]]
 name = "activity_fly_http"
-location = "oci://docker.io/getobelisk/components_fly_activity_fly_http:2026-01-13-1@sha256:7b39b252793821b0b7a1cfb4c330fa41c869a8895cfd0ee69c9a9b7e2d3d1b9d"
+location = "oci://docker.io/getobelisk/components_fly_activity_fly_http:2026-03-30@sha256:fef07531120e10a8e59edbb4927dcfffae68aed6925d76ea43c8e02e30584161"
 
 # HTTP Client for health checking.
 [[activity_wasm]]
 name = "activity_http_generic"
-location = "oci://docker.io/getobelisk/components_http_activity_http_generic:2026-01-13@sha256:f64b64aa176224645a21d583312ad1e832afae57af138998711771c4411e3b3e"
+location = "oci://docker.io/getobelisk/components_http_activity_http_generic:2026-03-30@sha256:d170092f3023380960c459bb92d71b6a0ac8c8d3f16ccb863eed72e69cf7157d"
 
 [[activity_wasm]]
 name = "activity_obelisk_client"
-location = "oci://docker.io/getobelisk/components_obelisk_activity_obelisk_client_http:2026-01-10@sha256:ca99fa1f0b08d1883784baff2966e07abe36b450b63d8deac25f8abf8cecd0ce"
+location = "oci://docker.io/getobelisk/components_obelisk_activity_obelisk_client_http:2026-03-30@sha256:f5fa282bb6941b3520c9ac98a949f0c1438eb3f728369858165bba4a91a8dd4c"

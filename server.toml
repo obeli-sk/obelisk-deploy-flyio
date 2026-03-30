@@ -1,0 +1,9 @@
+api.listening_addr = "127.0.0.1:5005"
+webui.listening_addr = "127.0.0.1:8080"
+
+[log.file]
+enabled = true
+target = true
+level = "info"
+directory = "."
+prefix = "obelisk.log"

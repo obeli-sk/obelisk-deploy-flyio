@@ -1,0 +1,15 @@
+api.listening_addr = "127.0.0.1:5005"
+webui.listening_addr = "127.0.0.1:8080"
+
+database.postgres.host =     "${POSTGRES_HOST}"
+database.postgres.user =     "${POSTGRES_USER}"
+database.postgres.password = "${POSTGRES_PASSWORD}"
+database.postgres.db_name =  "${POSTGRES_DATABASE}"
+database.postgres.provision_policy = "auto"
+
+[log.file]
+enabled = true
+target = true
+level = "info"
+directory = "."
+prefix = "obelisk.log"

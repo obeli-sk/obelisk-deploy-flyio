@@ -1,20 +1,20 @@
 use crate::generated::obelisk_flyio::workflow::types::ObeliskConfig;
 use crate::{
     API_INTERNAL_PORT, HEALTHCHECK_INTERNAL_PORT, SQLITE_DIRECTORY_PATH, VOLUME_MOUNT_PATH,
-    WEBHOOK_INTERNAL_PORT,
 };
 use anyhow::{Context, anyhow};
 use toml::Table;
 
-pub(crate) fn serialize_obelisk_toml(config: &ObeliskConfig) -> Result<String, anyhow::Error> {
+pub(crate) fn serialize_obelisk_toml(
+    config: &ObeliskConfig,
+) -> Result<(String, String), anyhow::Error> {
     const HEALTHCHECK_SERVER_NAME: &str = "healthcheck_server";
-    const WEBHOOK_SERVER_NAME: &str = "webhook_server";
     const OBELISK_OCI_TOML: &str = include_str!("../../../obelisk-oci.toml");
 
     let webhook_healthcheck_location = {
         let val: toml::Value = toml::from_str(OBELISK_OCI_TOML).expect("Invalid TOML");
 
-        let endpoint = val["webhook_endpoint"]
+        let endpoint = val["webhook_endpoint_wasm"]
             .as_array()
             .and_then(|arr| {
                 arr.iter()
@@ -28,7 +28,7 @@ pub(crate) fn serialize_obelisk_toml(config: &ObeliskConfig) -> Result<String, a
             .to_string()
     };
 
-    let initial_toml_template = format!(
+    let server_toml_template = format!(
         r#"
 wasm.cache_directory = "{VOLUME_MOUNT_PATH}/wasm"
 wasm.codegen_cache.directory = "{VOLUME_MOUNT_PATH}/codegen"
@@ -53,22 +53,27 @@ prefix = "obelisk.log"
 name = "{HEALTHCHECK_SERVER_NAME}"
 listening_addr = "0.0.0.0:{HEALTHCHECK_INTERNAL_PORT}"
 
-[[webhook_endpoint]]
+"#
+    );
+
+    let deployment_toml_template = format!(
+        r#"
+[[webhook_endpoint_wasm]]
 name = "webhook_healthcheck"
 location = "{webhook_healthcheck_location}"
 http_server = "{HEALTHCHECK_SERVER_NAME}"
 routes = [""]
 
-[[http_server]]
-name = "{WEBHOOK_SERVER_NAME}"
-listening_addr = "0.0.0.0:{WEBHOOK_INTERNAL_PORT}"
-
 "#
     );
 
-    let mut root_table = initial_toml_template
+    let server_table = server_toml_template
         .parse::<Table>()
-        .map_err(|e| anyhow!("Failed to parse static TOML: {}", e))?;
+        .map_err(|e| anyhow!("Failed to parse server TOML: {}", e))?;
+
+    let mut deployment_table = deployment_toml_template
+        .parse::<Table>()
+        .map_err(|e| anyhow!("Failed to parse deployment TOML: {}", e))?;
 
     fn get_or_create_array_of_tables<'a>(
         table: &'a mut Table,
@@ -83,7 +88,7 @@ listening_addr = "0.0.0.0:{WEBHOOK_INTERNAL_PORT}"
 
     // Add activity_wasm
     if let Some(activities) = &config.activity_wasm_list {
-        let activity_array = get_or_create_array_of_tables(&mut root_table, "activity_wasm")?;
+        let activity_array = get_or_create_array_of_tables(&mut deployment_table, "activity_wasm")?;
         for activity in activities {
             let mut activity_table = Table::new();
             activity_table.insert(
@@ -130,9 +135,9 @@ listening_addr = "0.0.0.0:{WEBHOOK_INTERNAL_PORT}"
         }
     }
 
-    // Add workflow
+    // Add workflow_wasm
     if let Some(workflows) = &config.workflow_list {
-        let workflow_array = get_or_create_array_of_tables(&mut root_table, "workflow")?;
+        let workflow_array = get_or_create_array_of_tables(&mut deployment_table, "workflow_wasm")?;
         for workflow in workflows {
             let mut workflow_table = Table::new();
             workflow_table.insert(
@@ -148,9 +153,10 @@ listening_addr = "0.0.0.0:{WEBHOOK_INTERNAL_PORT}"
         }
     }
 
-    // Add webhook_endpoint
+    // Add webhook_endpoint_wasm
     if let Some(webhooks) = &config.webhook_endpoint_list {
-        let webhook_array = get_or_create_array_of_tables(&mut root_table, "webhook_endpoint")?;
+        let webhook_array =
+            get_or_create_array_of_tables(&mut deployment_table, "webhook_endpoint_wasm")?;
         for webhook in webhooks {
             let mut webhook_table = Table::new();
             webhook_table.insert(
@@ -163,10 +169,7 @@ listening_addr = "0.0.0.0:{WEBHOOK_INTERNAL_PORT}"
                 toml::Value::String(webhook.location_oci.clone()),
             );
 
-            webhook_table.insert(
-                "http_server".to_string(),
-                toml::Value::String(WEBHOOK_SERVER_NAME.to_string()),
-            );
+            // No http_server field — uses the default external server at 0.0.0.0:9090
 
             let routes_array: Vec<toml::Value> = webhook
                 .routes
@@ -207,7 +210,10 @@ listening_addr = "0.0.0.0:{WEBHOOK_INTERNAL_PORT}"
         }
     }
 
-    Ok(toml::to_string_pretty(&toml::Value::Table(root_table))?)
+    Ok((
+        toml::to_string_pretty(&toml::Value::Table(deployment_table))?,
+        toml::to_string_pretty(&toml::Value::Table(server_table))?,
+    ))
 }
 
 #[cfg(test)]
@@ -269,7 +275,8 @@ mod tests {
             ]),
         };
 
-        let toml = serialize_obelisk_toml(&config).unwrap();
-        assert_snapshot!(toml);
+        let (deployment_toml, server_toml) = serialize_obelisk_toml(&config).unwrap();
+        assert_snapshot!("deployment_toml", deployment_toml);
+        assert_snapshot!("server_toml", server_toml);
     }
 }
