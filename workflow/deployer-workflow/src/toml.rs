@@ -34,7 +34,6 @@ wasm.cache_directory = "{VOLUME_MOUNT_PATH}/wasm"
 wasm.codegen_cache.directory = "{VOLUME_MOUNT_PATH}/codegen"
 
 wasm.parallel_compilation = false
-wasm.backtrace.persist = false # Speed up execution
 
 api.listening_addr = "[::]:{API_INTERNAL_PORT}"
 webui.listening_addr = "[::]:8080"
@@ -131,6 +130,20 @@ routes = [""]
                     toml::Value::Integer(max_retries.into()),
                 );
             }
+
+            // Add allowed_host
+            let mut allowed_host_table = Table::new();
+            allowed_host_table.insert(
+                "pattern".to_string(),
+                toml::Value::String("*://*:*".to_string()),
+            );
+            allowed_host_table.insert("methods".to_string(), toml::Value::String("*".to_string()));
+
+            activity_table.insert(
+                "allowed_host".to_string(),
+                toml::Value::Array(vec![toml::Value::Table(allowed_host_table)]),
+            );
+
             activity_array.push(toml::Value::Table(activity_table));
         }
     }
