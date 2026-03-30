@@ -1,6 +1,6 @@
 ---
 source: workflow/deployer-workflow/src/toml.rs
-expression: toml
+expression: deployment_toml
 ---
 [[activity_wasm]]
 env_vars = ["OPENAI_API_KEY"]
@@ -30,61 +30,24 @@ name = "stargazers_activity_db_turso"
 [activity_wasm.exec.lock_expiry]
 seconds = 5
 
-[api]
-listening_addr = "[::]:5005"
-
-[database.sqlite]
-directory = "/volume/obelisk-sqlite"
-
-[database.sqlite.pragma]
-cache_size = "3000"
-
-[[http_server]]
-listening_addr = "0.0.0.0:9091"
-name = "healthcheck_server"
-
-[[http_server]]
-listening_addr = "0.0.0.0:9090"
-name = "webhook_server"
-
-[log.file]
-directory = "/var/log"
-enabled = true
-prefix = "obelisk.log"
-target = true
-
-[wasm]
-cache_directory = "/volume/wasm"
-parallel_compilation = false
-
-[wasm.backtrace]
-persist = false
-
-[wasm.codegen_cache]
-directory = "/volume/codegen"
-
-[[webhook_endpoint]]
+[[webhook_endpoint_wasm]]
 http_server = "healthcheck_server"
-location = "oci://docker.io/getobelisk/components_flyio_webhook_healthcheck:2026-02-12@sha256:a86461ea58e59f375b938b63441605fa2f5eb00bfbe71ef97c47aee657294dc3"
+location = "oci://docker.io/getobelisk/components_flyio_webhook_healthcheck:2026-03-30@sha256:a81199c7df4d282725ed57f0d20f4214a64dc04aa8320911cda1748dcfde68f8"
 name = "webhook_healthcheck"
 routes = [""]
 
-[[webhook_endpoint]]
+[[webhook_endpoint_wasm]]
 env_vars = ["GITHUB_WEBHOOK_SECRET"]
-http_server = "webhook_server"
 location = "oci://docker.io/getobelisk/demo_stargazers_webhook:2025-09-28@sha256:aa4dfa18d1ad7c1623163eeabb41a415ebad5296fca8f3b957987afcdb2a0f40"
 name = "stargazers_webhook"
 
-[[webhook_endpoint.routes]]
+[[webhook_endpoint_wasm.routes]]
 methods = [
     "POST",
     "GET",
 ]
 route = ""
 
-[webui]
-listening_addr = "[::]:8080"
-
-[[workflow]]
+[[workflow_wasm]]
 location = "oci://docker.io/getobelisk/demo_stargazers_workflow:2025-09-28@sha256:678d85e3e2f89d22794fd1ffc0217bf23510e1349ee150a54d5c82cc2ef75834"
 name = "stargazers_workflow"

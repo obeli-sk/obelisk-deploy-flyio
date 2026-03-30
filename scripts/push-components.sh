@@ -10,7 +10,7 @@ TOML_FILE="obelisk-oci.toml"
 PREFIX="docker.io/getobelisk/components_flyio_"
 
 push() {
-    local COMPONENT_TYPE=$1
+    local TOML_COMPONENT_TYPE=$1
     local RELATIVE_PATH=$2
 
     local FILE_NAME_WITHOUT_EXT=$(basename "$RELATIVE_PATH" | sed 's/\.[^.]*$//')
@@ -20,14 +20,14 @@ push() {
 
     # Replace the old location with the actual OCI location
 
-    obelisk component add ${COMPONENT_TYPE} ${OUTPUT} --name ${FILE_NAME_WITHOUT_EXT} -c $TOML_FILE
+    obelisk component add ${TOML_COMPONENT_TYPE} ${OUTPUT} --name ${FILE_NAME_WITHOUT_EXT} --deployment $TOML_FILE
 }
 
 # Build components
 just build
 
-push workflow "target/wasm32-unknown-unknown/release_workflow/obelisk_deployer_flyio.wasm"
-push webhook_endpoint "target/wasm32-wasip2/release_webhook/webhook_healthcheck.wasm"
+push workflow_wasm "target/wasm32-unknown-unknown/release_workflow/obelisk_deployer_flyio.wasm"
+push webhook_endpoint_wasm "target/wasm32-wasip2/release_webhook/webhook_healthcheck.wasm"
 
 echo "All components pushed and TOML file updated successfully."
 

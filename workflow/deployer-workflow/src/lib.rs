@@ -69,6 +69,7 @@ const FINAL_VM_MEMORY_MB: u64 = 256;
 const FINAL_VM_SWAP_MB: u64 = 256;
 const VOLUME_MOUNT_PATH: &str = "/volume";
 const OBELISK_TOML_PATH: &str = "/etc/obelisk/obelisk.toml";
+const OBELISK_SERVER_TOML_PATH: &str = "/etc/obelisk/server.toml";
 const OBELISK_BIN_PATH: &str = "/obelisk/obelisk";
 const LITESTREAM_CONFIG_PATH: &str = "/etc/litestream.yml";
 const SQLITE_DIRECTORY_PATH: &str = formatcp!("{VOLUME_MOUNT_PATH}/obelisk-sqlite");
@@ -133,7 +134,8 @@ fn wait_until_started(
 fn setup_volume(
     app_name: &str,
     obelisk_version: &str,
-    obelisk_toml: &str,
+    deployment_toml: &str,
+    server_toml: &str,
     temp_vm_startup_deadline_secs: u16,
 ) -> Result<(), AppInitModifyError> {
     // Create a volume
@@ -180,13 +182,22 @@ fn setup_volume(
                 path: VOLUME_MOUNT_PATH.to_string(),
             }]),
             services: None,
-            files: Some(vec![FileConfig {
-                guest_path: OBELISK_TOML_PATH.to_string(),
-                raw_value: Some(general_purpose::STANDARD.encode(obelisk_toml)),
-                image_config: None,
-                mode: None,
-                secret_name: None,
-            }]),
+            files: Some(vec![
+                FileConfig {
+                    guest_path: OBELISK_TOML_PATH.to_string(),
+                    raw_value: Some(general_purpose::STANDARD.encode(deployment_toml)),
+                    image_config: None,
+                    mode: None,
+                    secret_name: None,
+                },
+                FileConfig {
+                    guest_path: OBELISK_SERVER_TOML_PATH.to_string(),
+                    raw_value: Some(general_purpose::STANDARD.encode(server_toml)),
+                    image_config: None,
+                    mode: None,
+                    secret_name: None,
+                },
+            ]),
         },
         Some(REGION),
     )
@@ -207,7 +218,9 @@ fn setup_volume(
             "server".to_string(),
             "verify".to_string(),
             "--ignore-missing-env-vars".to_string(),
-            "--config".to_string(),
+            "--server-config".to_string(),
+            OBELISK_SERVER_TOML_PATH.to_string(),
+            "--deployment".to_string(),
             OBELISK_TOML_PATH.to_string(),
         ],
         &ExecConfig {
@@ -240,7 +253,7 @@ fn litestream_entrypoint_contents() -> String {
 set -euo pipefail
 
 litestream restore -if-replica-exists --config {LITESTREAM_CONFIG_PATH} {SQLITE_FILE_PATH}
-exec litestream replicate --config {LITESTREAM_CONFIG_PATH} --exec 'obelisk server run --config {OBELISK_TOML_PATH}'
+exec litestream replicate --config {LITESTREAM_CONFIG_PATH} --exec 'obelisk server run --server-config {OBELISK_SERVER_TOML_PATH} --deployment {OBELISK_TOML_PATH}'
         "#
     )
 }
@@ -376,7 +389,7 @@ fn start_final_vm(
     vm_startup_deadline_secs: u16,
     expose_api_server: Option<u16>,
 ) -> Result<MachineId, AppInitModifyError> {
-    let obelisk_toml = serialize_obelisk_toml(&obelisk_config).unwrap();
+    let (deployment_toml, server_toml) = serialize_obelisk_toml(&obelisk_config).unwrap();
     let entrypoint = if litestream_minio_machine_id.is_some() {
         Some(vec![
             "/usr/bin/env".to_string(),
@@ -390,19 +403,35 @@ fn start_final_vm(
         None // Same as `Some(vec![])`, $@ will be empty.
     } else {
         Some(
-            vec!["server", "run", "--config", OBELISK_TOML_PATH]
-                .into_iter()
-                .map(ToString::to_string)
-                .collect(),
+            vec![
+                "server",
+                "run",
+                "--server-config",
+                OBELISK_SERVER_TOML_PATH,
+                "--deployment",
+                OBELISK_TOML_PATH,
+            ]
+            .into_iter()
+            .map(ToString::to_string)
+            .collect(),
         )
     };
-    let mut files = vec![FileConfig {
-        guest_path: OBELISK_TOML_PATH.to_string(),
-        raw_value: Some(general_purpose::STANDARD.encode(obelisk_toml)),
-        image_config: None,
-        mode: None,
-        secret_name: None,
-    }];
+    let mut files = vec![
+        FileConfig {
+            guest_path: OBELISK_TOML_PATH.to_string(),
+            raw_value: Some(general_purpose::STANDARD.encode(&deployment_toml)),
+            image_config: None,
+            mode: None,
+            secret_name: None,
+        },
+        FileConfig {
+            guest_path: OBELISK_SERVER_TOML_PATH.to_string(),
+            raw_value: Some(general_purpose::STANDARD.encode(&server_toml)),
+            image_config: None,
+            mode: None,
+            secret_name: None,
+        },
+    ];
     if let Some(minio_machine_id) = litestream_minio_machine_id {
         files.push(FileConfig {
             guest_path: LITESTREAM_ENTRYPOINT_PATH.to_string(),
@@ -644,11 +673,12 @@ impl Guest for Component {
         config: ObeliskConfig,
         temp_vm_startup_deadline_secs: u16,
     ) -> Result<(), AppInitModifyError> {
-        let obelisk_toml = serialize_obelisk_toml(&config).unwrap();
+        let (deployment_toml, server_toml) = serialize_obelisk_toml(&config).unwrap();
         setup_volume(
             &app_name,
             &config.obelisk_version,
-            &obelisk_toml,
+            &deployment_toml,
+            &server_toml,
             temp_vm_startup_deadline_secs,
         )
     }
