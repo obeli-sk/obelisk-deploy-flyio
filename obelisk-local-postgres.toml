@@ -5,7 +5,7 @@ exec.lock_expiry.seconds = 15
 max_retries = 6
 [[activity_wasm.allowed_host]]
 pattern = "https://api.machines.dev"
-methods = ["POST"]
+methods = "*"
 [activity_wasm.allowed_host.secrets]
 env_vars = ["FLY_API_TOKEN"]
 replace_in = ["headers"]
@@ -16,7 +16,7 @@ name = "activity_http_generic"
 location = "oci://docker.io/getobelisk/components_http_activity_http_generic:2026-03-30@sha256:d170092f3023380960c459bb92d71b6a0ac8c8d3f16ccb863eed72e69cf7157d"
 exec.lock_expiry.seconds = 5
 [[activity_wasm.allowed_host]]
-pattern = "https://*.fly.dev"
+pattern = "https://*.fly.dev:444"
 methods = "*"
 
 [[activity_wasm]]
