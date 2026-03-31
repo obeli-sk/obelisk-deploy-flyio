@@ -502,22 +502,7 @@ fn start_final_vm(
                 swap_size_mb: Some(FINAL_VM_SWAP_MB),
                 tty: None,
             }),
-            env: Some(vec![
-                // Fix for Obelisk 0.36.1 - fly.io does not allow unsetting those env vars set in Dockerfile.
-                // Using [::] for when a port is not exposed and needs `fly proxy` forwarding.
-                (
-                    "OBELISK__API__LISTENING_ADDR".to_string(),
-                    Some(format!("[::]:{API_INTERNAL_PORT}")),
-                ),
-                (
-                    "OBELISK__EXTERNAL__LISTENING_ADDR".to_string(),
-                    Some(format!("[::]:{WEBHOOK_INTERNAL_PORT}")),
-                ),
-                (
-                    "OBELISK__WEBUI__LISTENING_ADDR".to_string(),
-                    Some("[::]:8080".to_string()),
-                ),
-            ]),
+            env: None,
             restart: Some(MachineRestart {
                 max_retries: Some(MAX_VM_FAILURE_RETRIES),
                 policy: RestartPolicy::OnFailure,

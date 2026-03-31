@@ -1,5 +1,8 @@
 use crate::generated::obelisk_flyio::workflow::types::ObeliskConfig;
-use crate::{HEALTHCHECK_INTERNAL_PORT, SQLITE_DIRECTORY_PATH, VOLUME_MOUNT_PATH};
+use crate::{
+    API_INTERNAL_PORT, HEALTHCHECK_INTERNAL_PORT, SQLITE_DIRECTORY_PATH, VOLUME_MOUNT_PATH,
+    WEBHOOK_INTERNAL_PORT,
+};
 use anyhow::{Context, anyhow};
 use toml::Table;
 
@@ -28,10 +31,14 @@ pub(crate) fn serialize_obelisk_toml(
 
     let server_toml_template = format!(
         r#"
-wasm.cache_directory = "{VOLUME_MOUNT_PATH}/wasm"
-wasm.codegen_cache.directory = "{VOLUME_MOUNT_PATH}/codegen"
+api.listening_addr = "[::]:{API_INTERNAL_PORT}"
+webui.listening_addr = "[::]:8080"
+external.listening_addr = "[::]:{WEBHOOK_INTERNAL_PORT}"
 
-wasm.parallel_compilation = false
+[wasm]
+cache_directory = "{VOLUME_MOUNT_PATH}/wasm"
+codegen_cache.directory = "{VOLUME_MOUNT_PATH}/codegen"
+parallel_compilation = false
 
 [database.sqlite]
 directory = "{SQLITE_DIRECTORY_PATH}"

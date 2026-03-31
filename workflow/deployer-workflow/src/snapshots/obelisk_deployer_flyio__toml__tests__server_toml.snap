@@ -2,12 +2,17 @@
 source: workflow/deployer-workflow/src/toml.rs
 expression: server_toml
 ---
+[api]
+listening_addr = "[::]:5005"
 
 [database.sqlite]
 directory = "/volume/obelisk-sqlite"
 
 [database.sqlite.pragma]
 cache_size = "3000"
+
+[external]
+listening_addr = "[::]:9090"
 
 [[http_server]]
 listening_addr = "[::]:9091"
@@ -25,3 +30,6 @@ parallel_compilation = false
 
 [wasm.codegen_cache]
 directory = "/volume/codegen"
+
+[webui]
+listening_addr = "[::]:8080"
