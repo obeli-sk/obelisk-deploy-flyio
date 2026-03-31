@@ -1,3 +1,6 @@
+# Contains external components, used for wit/deps regeneration:
+# obelisk generate wit-deps --deployment obelisk-external.toml wit/deps --overwrite
+
 [[activity_wasm]]
 name = "activity_fly_http"
 location = "oci://docker.io/getobelisk/components_fly_activity_fly_http:2026-03-31@sha256:cc831dc0cfeecf267c67c0340aa5e3de511ff71d5978a3225e837de184635de3"
