@@ -1,7 +1,5 @@
 use crate::generated::obelisk_flyio::workflow::types::ObeliskConfig;
-use crate::{
-    API_INTERNAL_PORT, HEALTHCHECK_INTERNAL_PORT, SQLITE_DIRECTORY_PATH, VOLUME_MOUNT_PATH,
-};
+use crate::{HEALTHCHECK_INTERNAL_PORT, SQLITE_DIRECTORY_PATH, VOLUME_MOUNT_PATH};
 use anyhow::{Context, anyhow};
 use toml::Table;
 
@@ -35,9 +33,6 @@ wasm.codegen_cache.directory = "{VOLUME_MOUNT_PATH}/codegen"
 
 wasm.parallel_compilation = false
 
-api.listening_addr = "[::]:{API_INTERNAL_PORT}"
-webui.listening_addr = "[::]:8080"
-
 [database.sqlite]
 directory = "{SQLITE_DIRECTORY_PATH}"
 pragma = {{ "cache_size" = "3000" }}
@@ -50,7 +45,7 @@ prefix = "obelisk.log"
 
 [[http_server]]
 name = "{HEALTHCHECK_SERVER_NAME}"
-listening_addr = "0.0.0.0:{HEALTHCHECK_INTERNAL_PORT}"
+listening_addr = "[::]:{HEALTHCHECK_INTERNAL_PORT}"
 
 "#
     );

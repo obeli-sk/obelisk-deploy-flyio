@@ -75,9 +75,9 @@ const LITESTREAM_CONFIG_PATH: &str = "/etc/litestream.yml";
 const SQLITE_DIRECTORY_PATH: &str = formatcp!("{VOLUME_MOUNT_PATH}/obelisk-sqlite");
 const SQLITE_FILE_PATH: &str = formatcp!("{SQLITE_DIRECTORY_PATH}/obelisk.sqlite");
 const REGION: Region = Region::Ams;
-const WEBHOOK_INTERNAL_PORT: u16 = 9090;
+const WEBHOOK_INTERNAL_PORT: u16 = 9090; // forwarded to 443 in `services` section
 const API_INTERNAL_PORT: u16 = 5005;
-const HEALTHCHECK_INTERNAL_PORT: u16 = 9091;
+const HEALTHCHECK_INTERNAL_PORT: u16 = 9091; // forwarded to HEALTHCHECK_EXTERNAL_PORT
 const HEALTHCHECK_EXTERNAL_PORT: u16 = 444;
 const SLEEP_BETWEEN_RETRIES: Duration = Duration::from_secs(10);
 const SLEEP_AFTER_TEMP_VM_SHUTDOWN: Duration = Duration::from_secs(5);
@@ -502,7 +502,22 @@ fn start_final_vm(
                 swap_size_mb: Some(FINAL_VM_SWAP_MB),
                 tty: None,
             }),
-            env: None,
+            env: Some(vec![
+                // Fix for Obelisk 0.36.1 - fly.io does not allow unsetting those env vars set in Dockerfile.
+                // Using [::] for when a port is not exposed and needs `fly proxy` forwarding.
+                (
+                    "OBELISK__API__LISTENING_ADDR".to_string(),
+                    Some(format!("[::]:{API_INTERNAL_PORT}")),
+                ),
+                (
+                    "OBELISK__EXTERNAL__LISTENING_ADDR".to_string(),
+                    Some(format!("[::]:{WEBHOOK_INTERNAL_PORT}")),
+                ),
+                (
+                    "OBELISK__WEBUI__LISTENING_ADDR".to_string(),
+                    Some("[::]:8080".to_string()),
+                ),
+            ]),
             restart: Some(MachineRestart {
                 max_retries: Some(MAX_VM_FAILURE_RETRIES),
                 policy: RestartPolicy::OnFailure,

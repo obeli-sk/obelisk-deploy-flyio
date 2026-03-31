@@ -1,6 +1,6 @@
 [[activity_wasm]]
 name = "activity_fly_http"
-location = "oci://docker.io/getobelisk/components_fly_activity_fly_http:2026-03-30@sha256:fef07531120e10a8e59edbb4927dcfffae68aed6925d76ea43c8e02e30584161"
+location = "oci://docker.io/getobelisk/components_fly_activity_fly_http:2026-03-31@sha256:cc831dc0cfeecf267c67c0340aa5e3de511ff71d5978a3225e837de184635de3"
 
 # HTTP Client for health checking.
 [[activity_wasm]]
