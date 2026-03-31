@@ -1,7 +1,5 @@
 use crate::generated::obelisk_flyio::workflow::types::ObeliskConfig;
-use crate::{
-    API_INTERNAL_PORT, HEALTHCHECK_INTERNAL_PORT, SQLITE_DIRECTORY_PATH, VOLUME_MOUNT_PATH,
-};
+use crate::{HEALTHCHECK_INTERNAL_PORT, SQLITE_DIRECTORY_PATH, VOLUME_MOUNT_PATH};
 use anyhow::{Context, anyhow};
 use toml::Table;
 
@@ -34,10 +32,6 @@ wasm.cache_directory = "{VOLUME_MOUNT_PATH}/wasm"
 wasm.codegen_cache.directory = "{VOLUME_MOUNT_PATH}/codegen"
 
 wasm.parallel_compilation = false
-wasm.backtrace.persist = false # Speed up execution
-
-api.listening_addr = "[::]:{API_INTERNAL_PORT}"
-webui.listening_addr = "[::]:8080"
 
 [database.sqlite]
 directory = "{SQLITE_DIRECTORY_PATH}"
@@ -51,7 +45,7 @@ prefix = "obelisk.log"
 
 [[http_server]]
 name = "{HEALTHCHECK_SERVER_NAME}"
-listening_addr = "0.0.0.0:{HEALTHCHECK_INTERNAL_PORT}"
+listening_addr = "[::]:{HEALTHCHECK_INTERNAL_PORT}"
 
 "#
     );
@@ -131,6 +125,20 @@ routes = [""]
                     toml::Value::Integer(max_retries.into()),
                 );
             }
+
+            // Add allowed_host
+            let mut allowed_host_table = Table::new();
+            allowed_host_table.insert(
+                "pattern".to_string(),
+                toml::Value::String("*://*:*".to_string()),
+            );
+            allowed_host_table.insert("methods".to_string(), toml::Value::String("*".to_string()));
+
+            activity_table.insert(
+                "allowed_host".to_string(),
+                toml::Value::Array(vec![toml::Value::Table(allowed_host_table)]),
+            );
+
             activity_array.push(toml::Value::Table(activity_table));
         }
     }

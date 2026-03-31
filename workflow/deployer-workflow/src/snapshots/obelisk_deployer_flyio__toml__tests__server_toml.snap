@@ -2,8 +2,6 @@
 source: workflow/deployer-workflow/src/toml.rs
 expression: server_toml
 ---
-[api]
-listening_addr = "[::]:5005"
 
 [database.sqlite]
 directory = "/volume/obelisk-sqlite"
@@ -12,7 +10,7 @@ directory = "/volume/obelisk-sqlite"
 cache_size = "3000"
 
 [[http_server]]
-listening_addr = "0.0.0.0:9091"
+listening_addr = "[::]:9091"
 name = "healthcheck_server"
 
 [log.file]
@@ -25,11 +23,5 @@ target = true
 cache_directory = "/volume/wasm"
 parallel_compilation = false
 
-[wasm.backtrace]
-persist = false
-
 [wasm.codegen_cache]
 directory = "/volume/codegen"
-
-[webui]
-listening_addr = "[::]:8080"

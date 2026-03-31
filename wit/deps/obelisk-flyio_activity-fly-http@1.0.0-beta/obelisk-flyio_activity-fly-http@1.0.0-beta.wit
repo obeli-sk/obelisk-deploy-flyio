@@ -204,7 +204,7 @@ interface machines {
         guest: option<guest-config>,
         auto-destroy: option<bool>,
         init: option<init-config>,
-        env: option<list<tuple<string, string>>>,
+        env: option<list<tuple<string, option<string>>>>,
         restart: option<machine-restart>,
         stop-config: option<stop-config>,
         mounts: option<list<mount>>,

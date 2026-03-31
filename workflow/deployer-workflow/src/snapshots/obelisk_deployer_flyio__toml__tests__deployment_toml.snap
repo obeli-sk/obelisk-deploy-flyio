@@ -7,6 +7,10 @@ env_vars = ["OPENAI_API_KEY"]
 location = "oci://docker.io/getobelisk/demo_stargazers_activity_llm_openai:2025-09-28@sha256:4b10a66c80bec625a6b0a2e8a4b5192f8a2356eca19c0a6705335771a8b8b1e8"
 name = "stargazers_activity_llm_chatgpt"
 
+[[activity_wasm.allowed_host]]
+methods = "*"
+pattern = "*://*:*"
+
 [activity_wasm.exec.lock_expiry]
 seconds = 10
 
@@ -14,6 +18,10 @@ seconds = 10
 env_vars = ["GITHUB_TOKEN"]
 location = "oci://docker.io/getobelisk/demo_stargazers_activity_github_impl:2025-09-28@sha256:8f6fc9b1379b359e085998fa2fd7c966c450327d09770807dfba4b2f75731d72"
 name = "stargazers_activity_github_impl"
+
+[[activity_wasm.allowed_host]]
+methods = "*"
+pattern = "*://*:*"
 
 [activity_wasm.exec.lock_expiry]
 seconds = 5
@@ -27,12 +35,16 @@ location = "oci://docker.io/getobelisk/demo_stargazers_activity_db_turso:2025-09
 max_retries = 9
 name = "stargazers_activity_db_turso"
 
+[[activity_wasm.allowed_host]]
+methods = "*"
+pattern = "*://*:*"
+
 [activity_wasm.exec.lock_expiry]
 seconds = 5
 
 [[webhook_endpoint_wasm]]
 http_server = "healthcheck_server"
-location = "oci://docker.io/getobelisk/components_flyio_webhook_healthcheck:2026-03-30@sha256:a81199c7df4d282725ed57f0d20f4214a64dc04aa8320911cda1748dcfde68f8"
+location = "oci://docker.io/getobelisk/components_flyio_webhook_healthcheck:2026-03-31@sha256:1cda8ea88b472b280b1d4b28285c61f2008edd7594216a6bc594f66a87b64452"
 name = "webhook_healthcheck"
 routes = [""]
 
