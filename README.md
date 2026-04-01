@@ -106,12 +106,14 @@ obelisk component list
 
 Now run `app-init` with a new fly app name:
 ```sh
-just app-init "$(FLY_APP_NAME=inception ./scripts/json-app-init-itself.sh)"
+NEW_APP_NAME="inception-$(date +%s)"
+
+just app-init "$(FLY_APP_NAME=$NEW_APP_NAME ./scripts/json-app-init-itself.sh)"
 ```
 
 Push the secret to the inner app:
 ```sh
-FLY_APP_NAME=inception ./scripts/secrets-send.sh .envrc
+FLY_APP_NAME=$NEW_APP_NAME ./scripts/secrets-send.sh .envrc
 ```
 
 To access the web console, proxy the port 8080 as well.
