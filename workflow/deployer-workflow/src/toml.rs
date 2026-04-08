@@ -11,8 +11,7 @@ pub(crate) fn serialize_obelisk_toml(
         include_str!("../../../obelisk-healthcheck-oci.toml");
 
     let webhook_healthcheck_location = {
-        let val: toml::Value =
-            toml::from_str(OBELISK_HEALTHCHECK_OCI_TOML).expect("Invalid TOML");
+        let val: toml::Value = toml::from_str(OBELISK_HEALTHCHECK_OCI_TOML).expect("Invalid TOML");
 
         let endpoint = val["webhook_endpoint_wasm"]
             .as_array()
