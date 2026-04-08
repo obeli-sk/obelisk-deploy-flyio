@@ -102,7 +102,7 @@ jobs:
         run: |
           nix develop --command echo
 
-      - run: nix develop --command obelisk generate wit-deps --deployment obelisk-external.toml wit/deps --overwrite
+      - run: nix develop --command scripts/check-wit-deps.sh
 
       - run: cat dev-deps.txt
 
