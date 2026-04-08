@@ -1,0 +1,9 @@
+# Standalone deployment for `webhook_healthcheck`.
+# This component is not used at runtime by the deployer — it is injected by
+# `serialize_obelisk_toml` into the generated deployment TOML of deployed
+# Obelisk apps. This file only exists so `push-components.sh` has a source
+# deployment to push it from.
+[[webhook_endpoint_wasm]]
+name = "webhook_healthcheck"
+location = "${DEPLOYMENT_DIR}/target/wasm32-wasip2/release_webhook/webhook_healthcheck.wasm"
+routes = ["/obeliskhealthcheck"]
