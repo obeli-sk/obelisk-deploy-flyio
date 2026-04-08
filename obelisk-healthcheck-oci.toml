@@ -1,0 +1,10 @@
+# Standalone deployment for `webhook_healthcheck`.
+# This component is not used at runtime by the deployer — it is injected by
+# `serialize_obelisk_toml` into the generated deployment TOML of deployed
+# Obelisk apps. This file only exists so `push-components.sh` has a target to
+# update and so `toml.rs` can `include_str!` the pushed OCI location at build
+# time.
+[[webhook_endpoint_wasm]]
+name = "webhook_healthcheck"
+location = "oci://docker.io/getobelisk/components_flyio_webhook_healthcheck:2026-03-31@sha256:1cda8ea88b472b280b1d4b28285c61f2008edd7594216a6bc594f66a87b64452"
+routes = ["/obeliskhealthcheck"]

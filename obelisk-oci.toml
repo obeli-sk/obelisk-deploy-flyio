@@ -29,9 +29,3 @@ methods = ["GET", "POST"]
 [[workflow_wasm]]
 name = "obelisk_deployer_flyio"
 location = "oci://docker.io/getobelisk/components_flyio_obelisk_deployer_flyio:2026-03-31@sha256:632e91298929abcf9c8fb9a6e4d7c8852f194b5e9df7a2cb9a528b0c810546ce"
-
-# This webhook is here only for `push-components.sh`
-[[webhook_endpoint_wasm]]
-name = "webhook_healthcheck"
-location = "oci://docker.io/getobelisk/components_flyio_webhook_healthcheck:2026-03-31@sha256:1cda8ea88b472b280b1d4b28285c61f2008edd7594216a6bc594f66a87b64452"
-routes = ["/obeliskhealthcheck"]

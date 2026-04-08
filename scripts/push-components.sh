@@ -6,28 +6,34 @@ set -exuo pipefail
 cd "$(dirname "$0")/.."
 
 TAG="$1"
-TOML_FILE="obelisk-oci.toml"
-PREFIX="docker.io/getobelisk/components_flyio_"
+PREFIX="oci://docker.io/getobelisk/components_flyio_"
 
-push() {
-    local TOML_COMPONENT_TYPE=$1
-    local RELATIVE_PATH=$2
+push_component() {
+    local LOCAL_DEPLOYMENT_TOML="$1"
+    local COMPONENT_NAME="$2"
 
-    local FILE_NAME_WITHOUT_EXT=$(basename "$RELATIVE_PATH" | sed 's/\.[^.]*$//')
-    local OCI_LOCATION="${PREFIX}${FILE_NAME_WITHOUT_EXT}:${TAG}"
-    echo "Pushing ${RELATIVE_PATH} to ${OCI_LOCATION}..."
-    local OUTPUT=$(obelisk component push "$RELATIVE_PATH" "$OCI_LOCATION")
+    OCI_LOCATION="${PREFIX}${COMPONENT_NAME}:${TAG}"
+    obelisk component push --deployment "$LOCAL_DEPLOYMENT_TOML" "$COMPONENT_NAME" "$OCI_LOCATION"
+}
 
-    # Replace the old location with the actual OCI location
+push_and_update() {
+    local LOCAL_DEPLOYMENT_TOML="$1"
+    local COMPONENT_NAME="$2"
+    shift 2
+    DST_TOML_FILES=("$@")
 
-    obelisk component add ${TOML_COMPONENT_TYPE} ${OUTPUT} --name ${FILE_NAME_WITHOUT_EXT} --deployment $TOML_FILE
+    OCI_LOCATION=$(push_component "$LOCAL_DEPLOYMENT_TOML" "$COMPONENT_NAME")
+
+    for DST_TOML_FILE in "${DST_TOML_FILES[@]}"; do
+        obelisk component add --deployment "$DST_TOML_FILE" "$OCI_LOCATION" "$COMPONENT_NAME"
+    done
 }
 
 # Build components
 just build
 
-push workflow_wasm "target/wasm32-unknown-unknown/release_workflow/obelisk_deployer_flyio.wasm"
-push webhook_endpoint_wasm "target/wasm32-wasip2/release_webhook/webhook_healthcheck.wasm"
+push_and_update obelisk-local.toml obelisk_deployer_flyio obelisk-oci.toml
+push_and_update obelisk-healthcheck-local.toml webhook_healthcheck obelisk-healthcheck-oci.toml
 
 echo "All components pushed and TOML file updated successfully."
 
