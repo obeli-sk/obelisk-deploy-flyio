@@ -7,10 +7,12 @@ pub(crate) fn serialize_obelisk_toml(
     config: &ObeliskConfig,
 ) -> Result<(String, String), anyhow::Error> {
     const HEALTHCHECK_SERVER_NAME: &str = "healthcheck_server";
-    const OBELISK_OCI_TOML: &str = include_str!("../../../obelisk-oci.toml");
+    const OBELISK_HEALTHCHECK_OCI_TOML: &str =
+        include_str!("../../../obelisk-healthcheck-oci.toml");
 
     let webhook_healthcheck_location = {
-        let val: toml::Value = toml::from_str(OBELISK_OCI_TOML).expect("Invalid TOML");
+        let val: toml::Value =
+            toml::from_str(OBELISK_HEALTHCHECK_OCI_TOML).expect("Invalid TOML");
 
         let endpoint = val["webhook_endpoint_wasm"]
             .as_array()
