@@ -6,5 +6,5 @@
 # time.
 [[webhook_endpoint_wasm]]
 name = "webhook_healthcheck"
-location = "oci://docker.io/getobelisk/components_flyio_webhook_healthcheck:2026-03-31@sha256:1cda8ea88b472b280b1d4b28285c61f2008edd7594216a6bc594f66a87b64452"
+location = "oci://docker.io/getobelisk/components_flyio_webhook_healthcheck:2026-04-08@sha256:c5533b9650a5ef90638a718fd46c68e1dfd3349140ef111b1aab10233d881db6"
 routes = ["/obeliskhealthcheck"]
