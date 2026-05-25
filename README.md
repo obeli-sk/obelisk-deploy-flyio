@@ -47,7 +47,7 @@ While the workflow is running, push the secrets of your `.envrc` to the Fly.io a
 either using `fly` command, Fly.io's dashboard or using following [script](scripts/secrets-send.sh):
 
 ```sh
-./scripts/secrets-send.sh .envrc
+./scripts/secrets-send.sh .envrc FLY_API_TOKEN
 ```
 
 The following secret is required by the app:
@@ -113,7 +113,7 @@ just app-init "$(FLY_APP_NAME=$NEW_APP_NAME ./scripts/json-app-init-itself.sh)"
 
 Push the secret to the inner app:
 ```sh
-FLY_APP_NAME=$NEW_APP_NAME ./scripts/secrets-send.sh .envrc
+FLY_APP_NAME=$NEW_APP_NAME ./scripts/secrets-send.sh .envrc FLY_API_TOKEN
 ```
 
 To access the web console, proxy the port 8080 as well.
@@ -138,7 +138,7 @@ just app-init "$(./scripts/json-app-init-stargazers.sh)"
 
 Push the secrets using stargazers' `.envrc` file.
 ```sh
-./scripts/secrets-send.sh ../stargazers/.envrc
+./scripts/secrets-send.sh ../stargazers/.envrc OPENAI_API_KEY GITHUB_TOKEN TURSO_TOKEN TURSO_LOCATION GITHUB_WEBHOOK_SECRET
 ```
 
 # Testing Litestream backup and restore
@@ -152,8 +152,8 @@ just start-restart-should-persist-state "$(./scripts/json-start-restart-should-p
 ```
 While the execution is running, push the `FLY_API_TOKEN` secret:
 ```sh
- ./scripts/secrets-send.sh .envrc
- ```
+./scripts/secrets-send.sh .envrc FLY_API_TOKEN
+```
 
 
 # Using Fly.io activities directly
