@@ -23,7 +23,7 @@ serve-oci:
 	obelisk server run --server-config server.toml --deployment ${CONFIG:-obelisk-oci.toml}
 
 app-init params:
-	obelisk execution submit -f .../workflow.app-init '{{params}}'
+	obelisk execution submit ${OBELISK_SUBMIT_FLAGS:---follow}  .../workflow.app-init '{{params}}'
 
 start-restart-should-persist-state *params:
-	obelisk execution submit -f .../testing.start-restart-should-persist-state {{params}}
+	obelisk execution submit ${OBELISK_SUBMIT_FLAGS:---follow} .../testing.start-restart-should-persist-state {{params}}

@@ -1,5 +1,6 @@
 # Contains external components, used for wit/deps regeneration:
 # obelisk generate wit-deps --deployment obelisk-external.toml wit/deps --overwrite
+# TODO: Remove, use obelisk generate wit-deps --skip-local
 
 [[activity_wasm]]
 name = "activity_fly_http"
