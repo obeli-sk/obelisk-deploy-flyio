@@ -96,7 +96,7 @@ Kill the local Obelisk server.
 
 Proxy the gRPC port 5005 of the `obelisk` VM:
 ```sh
-flyctl proxy 5005 $(fly machine list | grep obelisk | awk '{print $6}')
+flyctl proxy 5005 $(fly machine list --json | jq -r '.[] | select(.name == "obelisk") | .private_ip')
 ```
 
 Verify the port tunneling works:
