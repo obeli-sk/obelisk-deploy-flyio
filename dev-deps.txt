@@ -1,11 +1,11 @@
-cargo-edit-upgrade 0.13.10
-cargo-expand 1.0.121
+cargo-edit-upgrade 0.13.11
+cargo-expand 1.0.122
 cargo generate 0.23.9
 cargo-insta 1.47.2
-cargo-nextest 0.9.136
+cargo-nextest 0.9.137
 just 1.51.0
-obelisk 0.38.2
+obelisk 0.38.3
 pkg-config 0.29.2
 rustc 1.96.0 (ac68faa20 2026-05-25)
-wasm-tools 1.249.0
+wasm-tools 1.250.0
 ldd (GNU libc) 2.42
