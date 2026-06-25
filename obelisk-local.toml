@@ -28,9 +28,9 @@ methods = ["GET", "POST"]
 
 [[workflow_wasm]]
 name = "obelisk_deployer_flyio"
-location = "${DEPLOYMENT_DIR}/target/wasm32-unknown-unknown/release_workflow/obelisk_deployer_flyio.wasm"
+location = "target/wasm32-unknown-unknown/release_workflow/obelisk_deployer_flyio.wasm"
 backtrace.sources = {
-    ".../src/lib.rs" = "${DEPLOYMENT_DIR}/workflow/deployer-workflow/src/lib.rs",
-    ".../src/testing.rs" = "${DEPLOYMENT_DIR}/workflow/deployer-workflow/src/testing.rs",
-    ".../src/toml.rs" = "${DEPLOYMENT_DIR}/workflow/deployer-workflow/src/toml.rs",
+    ".../src/lib.rs" = "workflow/deployer-workflow/src/lib.rs",
+    ".../src/testing.rs" = "workflow/deployer-workflow/src/testing.rs",
+    ".../src/toml.rs" = "workflow/deployer-workflow/src/toml.rs",
 }
