@@ -5,5 +5,5 @@
 # deployment to push it from.
 [[webhook_endpoint_wasm]]
 name = "webhook_healthcheck"
-location = "${DEPLOYMENT_DIR}/target/wasm32-wasip2/release_webhook/webhook_healthcheck.wasm"
+location = "target/wasm32-wasip2/release_webhook/webhook_healthcheck.wasm"
 routes = ["/obeliskhealthcheck"]
