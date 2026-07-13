@@ -44,7 +44,7 @@ seconds = 5
 
 [[webhook_endpoint_wasm]]
 http_server = "healthcheck_server"
-location = "oci://docker.io/getobelisk/components_flyio_webhook_healthcheck:2026-04-08@sha256:c5533b9650a5ef90638a718fd46c68e1dfd3349140ef111b1aab10233d881db6"
+location = "oci://docker.io/getobelisk/components_flyio_webhook_healthcheck:2026-07-13@sha256:646cee6b52fcd54827da25d3473a1c354f15d34349e854d99818092c857e8fcd"
 name = "webhook_healthcheck"
 routes = [""]
 

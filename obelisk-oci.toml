@@ -28,4 +28,4 @@ methods = ["GET", "POST"]
 
 [[workflow_wasm]]
 name = "obelisk_deployer_flyio"
-location = "oci://docker.io/getobelisk/components_flyio_obelisk_deployer_flyio:2026-04-08@sha256:6b815b79b255231609cb80a848646e78cf58ff9de3c7f7326c6a1b4759c61981"
+location = "oci://docker.io/getobelisk/components_flyio_obelisk_deployer_flyio:2026-07-13@sha256:742628270f41ebb77ceb93d757593f6cb9480a272ee21b3eb49a1647b4da09e9"
