@@ -104,7 +104,7 @@ fn wait_until_started(
     vm_error: fn(String) -> AppInitModifyError,
     vm_startup_deadline_secs: u16,
 ) -> Result<(), AppInitModifyError> {
-    let start_secs = workflow_support::sleep(ScheduleAt::Now)
+    let start_secs = workflow_support::sleep(ScheduleAt::Now, None)
         .map_err(|()| AppInitModifyError::Cancelled)?
         .seconds;
     let mut join_sets = HashMap::new();
@@ -217,7 +217,7 @@ fn setup_volume(
             OBELISK_BIN_PATH.to_string(),
             "server".to_string(),
             "verify".to_string(),
-            "--ignore-missing-env-vars".to_string(),
+            "--allow-unavailable-runtime-config".to_string(),
             "--server-config".to_string(),
             OBELISK_SERVER_TOML_PATH.to_string(),
             "--deployment".to_string(),
@@ -234,9 +234,12 @@ fn setup_volume(
     // Ignore failure to shut down, temp VM will be deleted with force.
     let _ = activity_fly_http::machines::stop(app_name, &temp_vm_id);
     // Wait a bit for clean shutdown
-    workflow_support::sleep(ScheduleAt::In(SchedulingDuration::Seconds(
-        SLEEP_AFTER_TEMP_VM_SHUTDOWN.as_secs(),
-    )))
+    workflow_support::sleep(
+        ScheduleAt::In(SchedulingDuration::Seconds(
+            SLEEP_AFTER_TEMP_VM_SHUTDOWN.as_secs(),
+        )),
+        None,
+    )
     .map_err(|()| AppInitModifyError::Cancelled)?;
     // Destroy the VM with force.
     activity_fly_http::machines::delete(app_name, &temp_vm_id, true)
@@ -287,7 +290,7 @@ fn wait_for_secrets(
     if required_secrets.is_empty() {
         return Ok(());
     }
-    let start_secs = workflow_support::sleep(ScheduleAt::Now)
+    let start_secs = workflow_support::sleep(ScheduleAt::Now, None)
         .map_err(|()| AppInitModifyError::Cancelled)?
         .seconds;
     let mut join_sets = HashMap::new();
@@ -550,7 +553,7 @@ fn wait_or_fail(
     join_sets: &mut HashMap<String, JoinSet>,
 ) -> Result<(), AppInitModifyError> {
     // Obtain current time
-    let current_secs = workflow_support::sleep(ScheduleAt::Now)
+    let current_secs = workflow_support::sleep(ScheduleAt::Now, None)
         .map_err(|()| AppInitModifyError::Cancelled)?
         .seconds;
 
@@ -565,12 +568,16 @@ fn wait_or_fail(
             workflow_support::join_set_create()
         })
     });
-    let delay_id = join_set.submit_delay(ScheduleAt::In(SchedulingDuration::Seconds(
-        SLEEP_BETWEEN_RETRIES.as_secs(),
-    )));
-    let (response_id, res) = join_set.join_next().expect("cannot return all-processed");
+    let delay_id = workflow_support::submit_delay(
+        join_set,
+        ScheduleAt::In(SchedulingDuration::Seconds(SLEEP_BETWEEN_RETRIES.as_secs())),
+    );
+    let res = workflow_support::join_next(join_set).expect("cannot return all-processed");
+    let response_id = join_set
+        .last_id()
+        .expect("join-next must record the processed response id");
     assert_matches!(response_id, ResponseId::DelayId(awaited) if awaited.id == delay_id.id);
-    res.map_err(|()| AppInitModifyError::Cancelled)?;
+    res.map_err(|_| AppInitModifyError::Cancelled)?;
     Ok(())
 }
 
@@ -593,7 +600,7 @@ fn url(app_name: &str, port: u16, suffix: &str) -> String {
 
 /// Sleep until the health check passes, observing the deadline, or the app is deleted.
 fn check_health(app_name: &str, health_check_deadline_secs: u16) -> Result<(), AppInitModifyError> {
-    let start_secs = workflow_support::sleep(ScheduleAt::Now)
+    let start_secs = workflow_support::sleep(ScheduleAt::Now, None)
         .map_err(|()| AppInitModifyError::Cancelled)?
         .seconds;
     let url = url(app_name, HEALTHCHECK_EXTERNAL_PORT, "");
