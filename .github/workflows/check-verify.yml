@@ -46,4 +46,4 @@ jobs:
 
       - name: Verify configs
         run: |
-          nix develop --command just verify --ignore-missing-env-vars --skip-db
+          nix develop --command just verify --allow-unavailable-runtime-config --skip-db
