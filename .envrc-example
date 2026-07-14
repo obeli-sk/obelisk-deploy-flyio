@@ -1,5 +1,7 @@
 use flake .
 
+export OBELISK__API__TOKEN=$(obelisk generate token --json | jq -r .token)
+
 # Needed for fly-http activity and
 export FLY_API_TOKEN="..."
 

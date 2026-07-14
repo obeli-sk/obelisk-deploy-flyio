@@ -47,7 +47,7 @@ While the workflow is running, push the secrets of your `.envrc` to the Fly.io a
 either using `fly` command, Fly.io's dashboard or using following [script](scripts/secrets-send.sh):
 
 ```sh
-./scripts/secrets-send.sh .envrc FLY_API_TOKEN
+./scripts/secrets-send.sh .envrc FLY_API_TOKEN OBELISK__API__TOKEN
 ```
 
 The following secret is required by the app:
@@ -98,6 +98,10 @@ Proxy the gRPC port 5005 of the `obelisk` VM:
 ```sh
 flyctl proxy 5005 $(fly machine list --json | jq -r '.[] | select(.name == "obelisk") | .private_ip')
 ```
+To access the web console, proxy the port 8080 as well:
+```sh
+flyctl proxy 8080 $(fly machine list --json | jq -r '.[] | select(.name == "obelisk") | .private_ip')
+```
 
 Verify the port tunneling works:
 ```sh
@@ -113,10 +117,9 @@ just app-init "$(FLY_APP_NAME=$NEW_APP_NAME ./scripts/json-app-init-itself.sh)"
 
 Push the secret to the inner app:
 ```sh
-FLY_APP_NAME=$NEW_APP_NAME ./scripts/secrets-send.sh .envrc FLY_API_TOKEN
+FLY_APP_NAME=$NEW_APP_NAME ./scripts/secrets-send.sh .envrc FLY_API_TOKEN OBELISK__API__TOKEN
 ```
 
-To access the web console, proxy the port 8080 as well.
 
 Don't forget to delete the inner and outer app afterwards.
 
