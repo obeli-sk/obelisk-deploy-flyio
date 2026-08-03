@@ -44,6 +44,10 @@ target = true
 directory = "/var/log"
 prefix = "obelisk.log"
 
+[[outbound_http.allowed_host]]
+pattern = "*://*:*"
+methods = "*"
+
 [[http_server]]
 name = "{HEALTHCHECK_SERVER_NAME}"
 listening_addr = "[::]:{HEALTHCHECK_INTERNAL_PORT}"

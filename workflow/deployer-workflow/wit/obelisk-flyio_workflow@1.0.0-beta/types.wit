@@ -64,7 +64,7 @@ interface types {
         temp-vm-error(string),
         /// Cannot place files on the volume.
         volume-write-error(string),
-        /// Error running `obelisk server verify --allow-unavailable-runtime-config`
+        /// Error running `obelisk deployment verify --allow-unavailable-runtime-config`
         verify-error(string),
         /// Waiting for secrets was interrupted by deleting the app.
         app-deleted,

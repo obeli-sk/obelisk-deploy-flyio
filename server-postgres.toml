@@ -4,6 +4,23 @@ database.postgres.password = "${POSTGRES_PASSWORD}"
 database.postgres.db_name =  "${POSTGRES_DATABASE}"
 database.postgres.provision_policy = "auto"
 
+[secrets]
+FLY_API_TOKEN = { env = "FLY_API_TOKEN" }
+
+[[outbound_http.allowed_host]]
+pattern = "https://api.machines.dev"
+methods = "*"
+secrets = ["FLY_API_TOKEN"]
+replace_in = ["headers"]
+
+[[outbound_http.allowed_host]]
+pattern = "https://*.fly.dev:444"
+methods = "*"
+
+[[outbound_http.allowed_host]]
+pattern = "https://*.fly.dev"
+methods = ["GET", "POST"]
+
 [log.file]
 enabled = true
 target = true

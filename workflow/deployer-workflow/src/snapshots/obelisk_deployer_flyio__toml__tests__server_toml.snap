@@ -2,7 +2,6 @@
 source: workflow/deployer-workflow/src/toml.rs
 expression: server_toml
 ---
-
 [database.sqlite]
 directory = "/volume/obelisk-sqlite"
 
@@ -18,6 +17,10 @@ directory = "/var/log"
 enabled = true
 prefix = "obelisk.log"
 target = true
+
+[[outbound_http.allowed_host]]
+methods = "*"
+pattern = "*://*:*"
 
 [wasm]
 cache_directory = "/volume/wasm"

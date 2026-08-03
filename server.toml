@@ -1,3 +1,20 @@
+[secrets]
+FLY_API_TOKEN = { env = "FLY_API_TOKEN" }
+
+[[outbound_http.allowed_host]]
+pattern = "https://api.machines.dev"
+methods = "*"
+secrets = ["FLY_API_TOKEN"]
+replace_in = ["headers"]
+
+[[outbound_http.allowed_host]]
+pattern = "https://*.fly.dev:444"
+methods = "*"
+
+[[outbound_http.allowed_host]]
+pattern = "https://*.fly.dev"
+methods = ["GET", "POST"]
+
 [log.file]
 enabled = true
 target = true

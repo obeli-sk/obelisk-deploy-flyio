@@ -6,8 +6,7 @@ max_retries = 6
 [[activity_wasm.allowed_host]]
 pattern = "https://api.machines.dev"
 methods = "*"
-[activity_wasm.allowed_host.secrets]
-env_vars = ["FLY_API_TOKEN"]
+secrets = ["FLY_API_TOKEN"]
 replace_in = ["headers"]
 
 # HTTP Client for health checking.

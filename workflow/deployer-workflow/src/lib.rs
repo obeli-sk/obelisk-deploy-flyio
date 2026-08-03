@@ -215,7 +215,7 @@ fn setup_volume(
         &temp_vm_id,
         &[
             OBELISK_BIN_PATH.to_string(),
-            "server".to_string(),
+            "deployment".to_string(),
             "verify".to_string(),
             "--allow-unavailable-runtime-config".to_string(),
             "--server-config".to_string(),
