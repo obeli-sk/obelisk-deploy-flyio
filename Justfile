@@ -14,6 +14,8 @@ test-integration:
 verify *params:
 	obelisk deployment verify --server-config server.toml --deployment obelisk-local.toml {{params}}
 	obelisk deployment verify --server-config server-postgres.toml --deployment obelisk-local-postgres.toml {{params}}
+
+verify-oci *params:
 	obelisk deployment verify --server-config server.toml --deployment obelisk-oci.toml {{params}}
 
 serve:
