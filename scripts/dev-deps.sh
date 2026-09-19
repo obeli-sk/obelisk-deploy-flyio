@@ -11,11 +11,11 @@ cargo upgrade --version >> dev-deps.txt
 cargo-expand --version >> dev-deps.txt
 cargo-generate --version >> dev-deps.txt
 cargo-insta --version >> dev-deps.txt
-cargo-nextest --version | head -n 1 >> dev-deps.txt
+cargo-nextest --version | sed -n '1p' >> dev-deps.txt
 just --version >> dev-deps.txt
 obelisk --version >> dev-deps.txt
 echo "pkg-config $(pkg-config --version)" >> dev-deps.txt
 rustc --version >> dev-deps.txt
 wasm-tools --version >> dev-deps.txt
 # libc
-ldd --version | head -n 1 >> dev-deps.txt
+ldd --version | sed -n '1p' >> dev-deps.txt

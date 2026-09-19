@@ -47,11 +47,14 @@ While the workflow is running, push the secrets of your `.envrc` to the Fly.io a
 either using `fly` command, Fly.io's dashboard or using following [script](scripts/secrets-send.sh):
 
 ```sh
-./scripts/secrets-send.sh .envrc FLY_API_TOKEN OBELISK__API__TOKEN
+./scripts/secrets-send.sh .envrc FLY_API_TOKEN OBELISK_API_TOKEN
 ```
 
 The following secret is required by the app:
 * `FLY_API_TOKEN`
+
+The deployer registers this token for outbound HTTP placeholder replacement. The deployed component
+never receives its plaintext value.
 
 When all required secrets are present, the workflow will continue with creating the final VM and health checks.
 
@@ -117,7 +120,7 @@ just app-init "$(FLY_APP_NAME=$NEW_APP_NAME ./scripts/json-app-init-itself.sh)"
 
 Push the secret to the inner app:
 ```sh
-FLY_APP_NAME=$NEW_APP_NAME ./scripts/secrets-send.sh .envrc FLY_API_TOKEN OBELISK__API__TOKEN
+FLY_APP_NAME=$NEW_APP_NAME ./scripts/secrets-send.sh .envrc FLY_API_TOKEN OBELISK_API_TOKEN
 ```
 
 
@@ -127,12 +130,20 @@ Don't forget to delete the inner and outer app afterwards.
 Similar to the process above, but deploying the [Stargazers Demo app](https://github.com/obeli-sk/demo-stargazers)
 requires setting up secrets to various API providers, see the project's readme for details.
 
-The follwing secrets are required by the app:
+The following secrets are required by the app:
 * `OPENAI_API_KEY`
 * `GITHUB_TOKEN`
 * `TURSO_TOKEN`
 * `TURSO_LOCATION`
 * `GITHUB_WEBHOOK_SECRET`
+
+`TURSO_LOCATION` is public configuration. `OPENAI_API_KEY`, `GITHUB_TOKEN`, and `TURSO_TOKEN` use
+outbound HTTP placeholder replacement, so the activities receive opaque placeholders rather than
+plaintext credentials. `GITHUB_WEBHOOK_SECRET` is exposed only to the webhook because it must read
+the value to validate inbound signatures. Its `secret_exposure_digest` was produced with
+`obelisk generate secret-config-digest` for that exact OCI component and secret set. Regenerate it
+whenever either changes. The deployer rejects an exposed secret without a digest instead of falling
+back to an ordinary environment variable.
 
 Run the [`app-init`](workflow/deployer-workflow/wit/obelisk-flyio_workflow@1.0.0-beta/workflow.wit) function:
 ```sh

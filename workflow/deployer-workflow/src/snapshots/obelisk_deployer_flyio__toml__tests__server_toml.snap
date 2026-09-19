@@ -21,6 +21,30 @@ target = true
 [[outbound_http.allowed_host]]
 methods = "*"
 pattern = "*://*:*"
+replace_in = ["headers"]
+secrets = [
+    "GITHUB_TOKEN",
+    "OPENAI_API_KEY",
+    "TURSO_TOKEN",
+]
+
+[public_env]
+allowed = ["TURSO_LOCATION"]
+
+[secrets.GITHUB_TOKEN]
+env = "GITHUB_TOKEN"
+
+[secrets.GITHUB_WEBHOOK_SECRET]
+env = "GITHUB_WEBHOOK_SECRET"
+
+[secrets.GITHUB_WEBHOOK_SECRET.exposed_to]
+stargazers_webhook = "sha256:4444444444444444444444444444444444444444444444444444444444444444"
+
+[secrets.OPENAI_API_KEY]
+env = "OPENAI_API_KEY"
+
+[secrets.TURSO_TOKEN]
+env = "TURSO_TOKEN"
 
 [wasm]
 cache_directory = "/volume/wasm"

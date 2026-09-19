@@ -3,34 +3,33 @@ source: workflow/deployer-workflow/src/toml.rs
 expression: deployment_toml
 ---
 [[activity_wasm]]
-env_vars = ["OPENAI_API_KEY"]
 location = "oci://docker.io/getobelisk/demo_stargazers_activity_llm_openai:2025-09-28@sha256:4b10a66c80bec625a6b0a2e8a4b5192f8a2356eca19c0a6705335771a8b8b1e8"
 name = "stargazers_activity_llm_chatgpt"
 
 [[activity_wasm.allowed_host]]
 methods = "*"
 pattern = "*://*:*"
+replace_in = ["headers"]
+secrets = ["OPENAI_API_KEY"]
 
 [activity_wasm.exec.lock_expiry]
 seconds = 10
 
 [[activity_wasm]]
-env_vars = ["GITHUB_TOKEN"]
 location = "oci://docker.io/getobelisk/demo_stargazers_activity_github_impl:2025-09-28@sha256:8f6fc9b1379b359e085998fa2fd7c966c450327d09770807dfba4b2f75731d72"
 name = "stargazers_activity_github_impl"
 
 [[activity_wasm.allowed_host]]
 methods = "*"
 pattern = "*://*:*"
+replace_in = ["headers"]
+secrets = ["GITHUB_TOKEN"]
 
 [activity_wasm.exec.lock_expiry]
 seconds = 5
 
 [[activity_wasm]]
-env_vars = [
-    "TURSO_TOKEN",
-    "TURSO_LOCATION",
-]
+env_vars = ["TURSO_LOCATION"]
 location = "oci://docker.io/getobelisk/demo_stargazers_activity_db_turso:2025-09-28@sha256:26b08b3d0c6e430944d8187a00bd9817a83ab89e11ba72d15e7533a758addf33"
 max_retries = 9
 name = "stargazers_activity_db_turso"
@@ -38,6 +37,8 @@ name = "stargazers_activity_db_turso"
 [[activity_wasm.allowed_host]]
 methods = "*"
 pattern = "*://*:*"
+replace_in = ["headers"]
+secrets = ["TURSO_TOKEN"]
 
 [activity_wasm.exec.lock_expiry]
 seconds = 5
@@ -49,7 +50,7 @@ name = "webhook_healthcheck"
 routes = [""]
 
 [[webhook_endpoint_wasm]]
-env_vars = ["GITHUB_WEBHOOK_SECRET"]
+exposed_secrets = ["GITHUB_WEBHOOK_SECRET"]
 location = "oci://docker.io/getobelisk/demo_stargazers_webhook:2025-09-28@sha256:aa4dfa18d1ad7c1623163eeabb41a415ebad5296fca8f3b957987afcdb2a0f40"
 name = "stargazers_webhook"
 

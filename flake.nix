@@ -9,7 +9,7 @@
       };
     };
     obelisk = {
-      url = "github:obeli-sk/obelisk/latest";
+      url = "github:obeli-sk/obelisk/v0.42.0-rc.3";
       inputs = {
         nixpkgs.follows = "nixpkgs";
         flake-utils.follows = "flake-utils";
@@ -33,6 +33,7 @@
               cargo-insta
               cargo-nextest
               flyctl
+              gh
               just
               jq
               pkg-config
@@ -40,6 +41,7 @@
               wasm-tools
               wasmtime
               wit-bindgen
+              yq-go
             ];
           withObelisk = commonDeps ++ [ obelisk.packages.${system}.default ];
 

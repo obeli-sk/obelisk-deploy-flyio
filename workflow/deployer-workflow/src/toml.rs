@@ -66,7 +66,7 @@ routes = [""]
 "#
     );
 
-    let server_table = server_toml_template
+    let mut server_table = server_toml_template
         .parse::<Table>()
         .map_err(|e| anyhow!("Failed to parse server TOML: {}", e))?;
 
@@ -111,6 +111,13 @@ routes = [""]
                     ),
                 );
             }
+            add_exposed_secrets(
+                &mut activity_table,
+                &mut server_table,
+                &activity.name,
+                activity.exposed_secrets.as_deref(),
+                activity.secret_exposure_digest.as_deref(),
+            )?;
             if let Some(lock_expiry) = activity.lock_expiry_seconds {
                 let mut exec_table = Table::new();
                 let mut lock_expiry_table = Table::new();
@@ -138,6 +145,23 @@ routes = [""]
                 toml::Value::String("*://*:*".to_string()),
             );
             allowed_host_table.insert("methods".to_string(), toml::Value::String("*".to_string()));
+            if let Some(outbound_secrets) = &activity.outbound_secrets {
+                allowed_host_table.insert(
+                    "secrets".to_string(),
+                    toml::Value::Array(
+                        outbound_secrets
+                            .iter()
+                            .cloned()
+                            .map(toml::Value::String)
+                            .collect(),
+                    ),
+                );
+                allowed_host_table.insert(
+                    "replace_in".to_string(),
+                    toml::Value::Array(vec![toml::Value::String("headers".to_string())]),
+                );
+                add_outbound_secrets(&mut server_table, outbound_secrets)?;
+            }
 
             activity_table.insert(
                 "allowed_host".to_string(),
@@ -219,14 +243,153 @@ routes = [""]
                     ),
                 );
             }
+            add_exposed_secrets(
+                &mut webhook_table,
+                &mut server_table,
+                &webhook.name,
+                webhook.exposed_secrets.as_deref(),
+                webhook.secret_exposure_digest.as_deref(),
+            )?;
             webhook_array.push(toml::Value::Table(webhook_table));
         }
+    }
+
+    let public_env = config
+        .activity_wasm_list
+        .iter()
+        .flatten()
+        .flat_map(|component| component.env_vars.iter().flatten())
+        .chain(
+            config
+                .webhook_endpoint_list
+                .iter()
+                .flatten()
+                .flat_map(|component| component.env_vars.iter().flatten()),
+        )
+        .filter(|env_var| !env_var.contains('='))
+        .cloned()
+        .map(toml::Value::String)
+        .collect::<Vec<_>>();
+    if !public_env.is_empty() {
+        server_table.insert(
+            "public_env".to_string(),
+            toml::Value::Table(Table::from_iter([(
+                "allowed".to_string(),
+                toml::Value::Array(public_env),
+            )])),
+        );
     }
 
     Ok((
         toml::to_string_pretty(&toml::Value::Table(deployment_table))?,
         toml::to_string_pretty(&toml::Value::Table(server_table))?,
     ))
+}
+
+fn add_exposed_secrets(
+    component_table: &mut Table,
+    server_table: &mut Table,
+    component_name: &str,
+    exposed_secrets: Option<&[String]>,
+    secret_exposure_digest: Option<&str>,
+) -> Result<(), anyhow::Error> {
+    let Some(exposed_secrets) = exposed_secrets.filter(|secrets| !secrets.is_empty()) else {
+        return Ok(());
+    };
+    let digest = secret_exposure_digest.with_context(|| {
+        format!("component '{component_name}' exposes secrets but has no secret exposure digest")
+    })?;
+
+    component_table.insert(
+        "exposed_secrets".to_string(),
+        toml::Value::Array(
+            exposed_secrets
+                .iter()
+                .cloned()
+                .map(toml::Value::String)
+                .collect(),
+        ),
+    );
+    let secrets_table = server_table
+        .entry("secrets")
+        .or_insert_with(|| toml::Value::Table(Table::new()))
+        .as_table_mut()
+        .context("Expected 'secrets' to be a table")?;
+    for secret in exposed_secrets {
+        let secret_table = secrets_table
+            .entry(secret)
+            .or_insert_with(|| {
+                toml::Value::Table(Table::from_iter([(
+                    "env".to_string(),
+                    toml::Value::String(secret.clone()),
+                )]))
+            })
+            .as_table_mut()
+            .with_context(|| format!("Expected secret '{secret}' to be a table"))?;
+        let exposed_to = secret_table
+            .entry("exposed_to")
+            .or_insert_with(|| toml::Value::Table(Table::new()))
+            .as_table_mut()
+            .with_context(|| format!("Expected secret '{secret}.exposed_to' to be a table"))?;
+        exposed_to.insert(
+            component_name.to_string(),
+            toml::Value::String(digest.to_string()),
+        );
+    }
+    Ok(())
+}
+
+fn add_outbound_secrets(
+    server_table: &mut Table,
+    outbound_secrets: &[String],
+) -> Result<(), anyhow::Error> {
+    let secrets_table = server_table
+        .entry("secrets")
+        .or_insert_with(|| toml::Value::Table(Table::new()))
+        .as_table_mut()
+        .context("Expected 'secrets' to be a table")?;
+    for secret in outbound_secrets {
+        secrets_table.entry(secret).or_insert_with(|| {
+            toml::Value::Table(Table::from_iter([(
+                "env".to_string(),
+                toml::Value::String(secret.clone()),
+            )]))
+        });
+    }
+
+    let allowed_hosts = server_table
+        .get_mut("outbound_http")
+        .and_then(toml::Value::as_table_mut)
+        .and_then(|http| http.get_mut("allowed_host"))
+        .and_then(toml::Value::as_array_mut)
+        .context("Expected 'outbound_http.allowed_host' to be an array")?;
+    let allowed_host = allowed_hosts
+        .first_mut()
+        .and_then(toml::Value::as_table_mut)
+        .context("Expected an outbound HTTP allowlist entry")?;
+    let mut server_secrets = allowed_host
+        .get("secrets")
+        .and_then(toml::Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(toml::Value::as_str)
+        .map(ToString::to_string)
+        .collect::<std::collections::BTreeSet<_>>();
+    server_secrets.extend(outbound_secrets.iter().cloned());
+    allowed_host.insert(
+        "secrets".to_string(),
+        toml::Value::Array(
+            server_secrets
+                .into_iter()
+                .map(toml::Value::String)
+                .collect(),
+        ),
+    );
+    allowed_host.insert(
+        "replace_in".to_string(),
+        toml::Value::Array(vec![toml::Value::String("headers".to_string())]),
+    );
+    Ok(())
 }
 
 #[cfg(test)]
@@ -248,21 +411,30 @@ mod tests {
                 ActivityWasm {
                     name: "stargazers_activity_llm_chatgpt".to_string(),
                     location_oci: "oci://docker.io/getobelisk/demo_stargazers_activity_llm_openai:2025-09-28@sha256:4b10a66c80bec625a6b0a2e8a4b5192f8a2356eca19c0a6705335771a8b8b1e8".to_string(),
-                    env_vars: Some(vec!["OPENAI_API_KEY".to_string()]),
+                    env_vars: None,
+                    outbound_secrets: Some(vec!["OPENAI_API_KEY".to_string()]),
+                    exposed_secrets: None,
+                    secret_exposure_digest: None,
                     lock_expiry_seconds: Some(10),
                     max_retries: None,
                 },
                 ActivityWasm {
                     name: "stargazers_activity_github_impl".to_string(),
                     location_oci: "oci://docker.io/getobelisk/demo_stargazers_activity_github_impl:2025-09-28@sha256:8f6fc9b1379b359e085998fa2fd7c966c450327d09770807dfba4b2f75731d72".to_string(),
-                    env_vars: Some(vec!["GITHUB_TOKEN".to_string()]),
+                    env_vars: None,
+                    outbound_secrets: Some(vec!["GITHUB_TOKEN".to_string()]),
+                    exposed_secrets: None,
+                    secret_exposure_digest: None,
                     lock_expiry_seconds: Some(5),
                     max_retries: None,
                 },
                 ActivityWasm {
                     name: "stargazers_activity_db_turso".to_string(),
                     location_oci: "oci://docker.io/getobelisk/demo_stargazers_activity_db_turso:2025-09-28@sha256:26b08b3d0c6e430944d8187a00bd9817a83ab89e11ba72d15e7533a758addf33".to_string(),
-                    env_vars: Some(vec!["TURSO_TOKEN".to_string(), "TURSO_LOCATION".to_string()]),
+                    env_vars: Some(vec!["TURSO_LOCATION".to_string()]),
+                    outbound_secrets: Some(vec!["TURSO_TOKEN".to_string()]),
+                    exposed_secrets: None,
+                    secret_exposure_digest: None,
                     lock_expiry_seconds: Some(5),
                     max_retries: Some(9),
                 },
@@ -283,7 +455,9 @@ mod tests {
                             route: "".to_string(),
                         },
                     ],
-                    env_vars: Some(vec!["GITHUB_WEBHOOK_SECRET".to_string()]),
+                    env_vars: None,
+                    exposed_secrets: Some(vec!["GITHUB_WEBHOOK_SECRET".to_string()]),
+                    secret_exposure_digest: Some(format!("sha256:{}", "4".repeat(64))),
                 },
             ]),
         };

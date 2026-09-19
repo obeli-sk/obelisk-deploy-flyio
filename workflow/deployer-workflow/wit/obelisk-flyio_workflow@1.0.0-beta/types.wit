@@ -18,6 +18,12 @@ interface types {
         name: string,
         location-oci: string,
         env-vars: option<list<env-var>>,
+        /// Secrets used only for outbound HTTP header placeholder replacement.
+        outbound-secrets: option<list<string>>,
+        /// Secrets injected into the component environment as plaintext.
+        exposed-secrets: option<list<string>>,
+        /// Output of `obelisk generate secret-config-digest` for this exact component configuration.
+        secret-exposure-digest: option<string>,
         lock-expiry-seconds: option<u32>,
         max-retries: option<u32>,
     }
@@ -32,6 +38,10 @@ interface types {
         location-oci: string,
         routes: list<route>,
         env-vars: option<list<env-var>>,
+        /// Secrets injected into the component environment as plaintext.
+        exposed-secrets: option<list<string>>,
+        /// Output of `obelisk generate secret-config-digest` for this exact component configuration.
+        secret-exposure-digest: option<string>,
     }
 
     record route {

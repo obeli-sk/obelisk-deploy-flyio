@@ -27,7 +27,7 @@ cat <<EOF
         {
             "name": "activity_fly_http",
             "location_oci": "$ACTIVITY_FLY_OCI",
-            "env_vars":["FLY_API_TOKEN"],
+            "outbound_secrets":["FLY_API_TOKEN"],
             "lock_expiry_seconds": 15,
             "max_retries": 6
         },
