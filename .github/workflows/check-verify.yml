@@ -45,5 +45,10 @@ jobs:
         run: nix develop --command just build
 
       - name: Verify configs
+        env:
+          POSTGRES_HOST: localhost
+          POSTGRES_USER: obelisk
+          POSTGRES_PASSWORD: obelisk
+          POSTGRES_DATABASE: obelisk
         run: |
           nix develop --command just verify --allow-unavailable-runtime-config
