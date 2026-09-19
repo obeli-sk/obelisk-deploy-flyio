@@ -789,17 +789,22 @@ impl Guest for Component {
 fn get_secret_keys(config: ObeliskConfig) -> HashSet<String> {
     let a_iter = config
         .activity_wasm_list
-        .into_iter()
+        .iter()
         .flatten()
-        .flat_map(|component| component.env_vars)
-        .flatten()
-        .filter(|env_var| !env_var.contains("="));
+        .flat_map(|component| component.exposed_secrets.iter().flatten())
+        .chain(
+            config
+                .activity_wasm_list
+                .iter()
+                .flatten()
+                .flat_map(|component| component.outbound_secrets.iter().flatten()),
+        )
+        .cloned();
     let w_iter = config
         .webhook_endpoint_list
-        .into_iter()
+        .iter()
         .flatten()
-        .flat_map(|component| component.env_vars)
-        .flatten()
-        .filter(|env_var| !env_var.contains("="));
+        .flat_map(|component| component.exposed_secrets.iter().flatten())
+        .cloned();
     a_iter.chain(w_iter).collect()
 }

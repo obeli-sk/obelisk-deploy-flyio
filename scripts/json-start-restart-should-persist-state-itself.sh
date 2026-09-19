@@ -26,25 +26,25 @@ cat <<EOF
     "activity_wasm_list":[
         {
             "name": "activity_fly_http",
-            "location": "$ACTIVITY_FLY_OCI",
-            "env_vars":["FLY_API_TOKEN"],
+            "location_oci": "$ACTIVITY_FLY_OCI",
+            "outbound_secrets":["FLY_API_TOKEN"],
             "lock_expiry_seconds": 15,
             "max_retries": 6
         },
         {
             "name": "activity_http_generic",
-            "location": "$ACTIVITY_HTTP_OCI",
+            "location_oci": "$ACTIVITY_HTTP_OCI",
             "lock_expiry_seconds": 5
         },
         {
             "name": "activity_obelisk_client",
-            "location": "$ACTIVITY_OBELISK_CLIENT_OCI"
+            "location_oci": "$ACTIVITY_OBELISK_CLIENT_OCI"
         }
     ],
     "workflow_list":[
         {
             "name": "obelisk_deployer_flyio",
-            "location": "$WORKFLOW_OCI"
+            "location_oci": "$WORKFLOW_OCI"
         }
     ]
 },
