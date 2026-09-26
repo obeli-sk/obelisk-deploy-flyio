@@ -1,5 +1,10 @@
 # Obelisk deployment app for Fly.io
 
+> **Deprecated:** This app predates first-class deployments in Obelisk. It uses
+> its own WIT interface to generate Obelisk configuration files for Fly.io.
+> Obelisk now provides `obelisk deployment submit` for submitting deployments,
+> so this repository will be archived.
+
 An [Obelisk](https://obeli.sk) [workflow](workflow/deployer-workflow/impl-flyio/src/lib.rs)
 that deploys an Obelisk app on Fly.io.
 
